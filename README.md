@@ -1,4 +1,4 @@
-# libPixoo64
+# pixoo_api
 
 A Python library for the Divoom Pixoo 16 / 64.
 
