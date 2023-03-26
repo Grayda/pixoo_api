@@ -46,7 +46,7 @@ def getFirstDevice():
         return []
 
 
-def setDevice(device: dict | str | DivoomDevice = None):
+def setDevice(deviceDetails: dict | str | DivoomDevice = None):
     """
     Set the device for API calls
 
@@ -66,6 +66,8 @@ def setDevice(device: dict | str | DivoomDevice = None):
 
     """
 
+    global device
+
     # If we passed a string (i.e. an IP address)
     if isinstance(device, str):
         # Find all the devices and pick the first one
@@ -82,11 +84,12 @@ def setDevice(device: dict | str | DivoomDevice = None):
         else:
             raise Exception("No devices found!")
     # If we were handed a string (i.e. an IP address), set as appropriate
-    elif isinstance(device, DivoomDevice):
-        device = device
-    elif isinstance(device, dict):
-        device = DivoomDevice(DevicePrivateIP=device.DevicePrivateIP, DeviceMac=device.DeviceMac,
-                        DeviceId=device.DeviceId, DeviceName=device.DeviceName)
+    elif isinstance(deviceDetails, DivoomDevice):
+        device = deviceDetails
+    elif isinstance(deviceDetails, dict):
+        print(device)
+        device = DivoomDevice(DevicePrivateIP=deviceDetails["DevicePrivateIP"], DeviceMac=deviceDetails["DeviceMac"],
+                        DeviceId=deviceDetails["DeviceId"], DeviceName=deviceDetails["DeviceName"])
 
     return device
 
@@ -1269,12 +1272,15 @@ def _fileToFrames(filename: str, url=False, id=0, resample: Image.Resampling | i
     frames = []
 
     if url:
-        file = request.get(filename)
+        file = request(method="get", url=filename)
         img = Image.open(BytesIO(file.content))
     else:
         img = Image.open(filename)
 
-    if img.n_frames > 60:
+    # Non-animated images don't have frames, so we need to check if the attribute exists and if it doesn't, just set totalFrames to 1
+    if not hasattr(img, "n_frames"):
+        totalFrames = 1
+    elif img.n_frames > 60:
         totalFrames = 60
     else:
         totalFrames = img.n_frames
@@ -1292,7 +1298,7 @@ def _fileToFrames(filename: str, url=False, id=0, resample: Image.Resampling | i
             imgrgb = ImageOps.pad(image=imgrgb, size=(64, 64))
 
         if "duration" in img.info:
-            duration = img.info["duration"]
+            duration = int(img.info["duration"])
         else:
             duration = 1000
 
@@ -1329,7 +1335,9 @@ def sendGIF(type: GIFType | int, filename: str | GIFData):
         GIFType.SDFOLDER
             Plays a folder of GIFs from the SD card
         GIFType.URL
-            Retrieves a GIF from a URL and plays it
+            Tells the device to play the GIF from the specified URL. Must already be 64x64 RGB
+        GIFType.URLDATA
+            Downloads the GIF and plays it, much like GIFType.LOCALFILE, but supporting a URL instead
         GIFType.DATA
             Plays a data URI that you send it
         GIFType.LOCALFILE
@@ -1377,7 +1385,7 @@ def sendGIF(type: GIFType | int, filename: str | GIFData):
                 "PicData": filename.data
             })
 
-        case GIFType.LOCALFILE.value:
+        case GIFType.LOCALFILE.value | GIFType.URLDATA.value:
 
             # Reset the GIF IDs so we can just send an ID of 1 and it'll work.
             resetGIFID()
@@ -1390,8 +1398,9 @@ def sendGIF(type: GIFType | int, filename: str | GIFData):
             # Loop through all the files that have been passed in
             for file in range(0, len(filename)):
                 # Convert each file into a set of Pixoo compatible frames
+                # Also check if we're calling a URL.
                 frames = _fileToFrames(
-                    filename=filename[file], id=file)
+                    filename=filename[file], id=file, url=(type == GIFType.URLDATA.value))
 
                 # Loop through all the framedata we received back from the conversaion
                 for frame in range(0, len(frames)):
@@ -1578,22 +1587,23 @@ def drawText(options: List[TextOptions]):
     """
 
     textPackets = []
-
+    print(options)
     for option in options:
+        print(option)
         # option = defaultdict(lambda:None, option)
         textPackets.append({
-            "TextId": option.id,
-            "type": option.type or TextType.TEXT.value,
-            "x": option.x,
-            "y": option.y,
-            "dir": option.direction or TextDirection.LEFT.value,
-            "font": option.font or 2,
-            "TextWidth": option.width,
-            "TextString": option.text,
+            "TextId": option["id"],
+            "type": option["type"] or TextType.TEXT.value,
+            "x": option["x"],
+            "y": option["y"],
+            "dir": option["direction"] or TextDirection.LEFT.value,
+            "font": option["font"] or 2,
+            "TextWidth": option["width"],
+            "TextString": option["text"],
             "Textheight": 16,
             "speed": 10,
-            "align": option.align or TextAlignment.LEFT.value,
-            "color": option.colour
+            "align": option["align"] or TextAlignment.LEFT.value,
+            "color": option["colour"]
         })
 
     try:
@@ -1602,7 +1612,7 @@ def drawText(options: List[TextOptions]):
     except Exception as e:
         raise e
 
-    return [option.id for option in options]
+    return [option["id"] for option in options]
 
 
 def divoomLogin(email: str, password: str, alreadyHashed: bool = False):

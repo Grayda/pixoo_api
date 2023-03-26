@@ -127,7 +127,7 @@ giftype = pixoo.GIFType.LOCALFILE.value
 filename = "c:\\users\\JohnSmith\\Pictures\\MyGIF.gif"
 pixoo.sendGIF(type=giftype, filename=filename)
 
-# Draw text to the screen (only after using sendGIF with the LOCALFILE, DATA or URL GIF types)
+# Draw text to the screen (only after using sendGIF with the LOCALFILE, DATA or URLDATA GIF types)
 textOptions = [{
     id: 0,
     x: 0,
