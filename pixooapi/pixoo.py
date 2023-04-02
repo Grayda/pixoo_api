@@ -150,7 +150,8 @@ def sendOnlineCommand(command: str, parameters={}):
 
         # Just call the API
         try:
-            return callPixooAPI(data={}, hostname="appin.divoom-gz.com", endpoint=command, https=True)
+            print(command)
+            return callPixooAPI(data=parameters, hostname="appin.divoom-gz.com", endpoint=command, https=True)
         except Exception as e:
             raise e
 
@@ -177,7 +178,7 @@ def sendOnlineCommand(command: str, parameters={}):
 
     # Then tack on any parameters (which are a dictionary)
     data.update(parameters)
-    print(data)
+    
     try:
         return callPixooAPI(data=data, hostname="appin.divoom-gz.com", endpoint=command, https=True)
 
@@ -1908,6 +1909,54 @@ def loadScreenFromFile(file: str):
 
         except Exception as e:
             raise e 
+
+def getNightMode():
+    """
+    Gets the Night Mode Schedule
+
+    Gets the night mode schedule. This is when the screen
+    will dim or brighten
+
+    Parameters
+    ----------
+
+    Returns
+    -------
+
+    dict
+        Returns a dictionary with a few properties:
+
+        start : datetime.time
+            The time the night mode will start
+        end : datetime.time
+            The time that the night mode will end
+        state : bool
+            Whether the night mode is on or off
+        brightness : int 
+            The brightness of the screen during night mode
+
+    """
+
+    try:
+
+        response = sendOnlineCommand("Channel/GetNightView", { "PacketFlag": 0 })
+
+        startTime = response["StartTime"]
+        endTime = response["EndTime"]
+
+        startTimeParts = divmod(startTime, 60)
+        endTimeParts = divmod(endTime, 60)
+
+        return {
+            "start": datetime.time(startTimeParts[0], startTimeParts[1], 0),
+            "end": datetime.time(endTimeParts[0], endTimeParts[1], 0),
+            "state": bool(response["OnOff"]),
+            "brightness": int(response["Brightness"])
+        }
+
+    except Exception as e:
+        raise e
+
 
 def setNightMode(state: bool | int, start: int | datetime.time | None, end: int | datetime.time | None, brightness: int = 50):
     """
