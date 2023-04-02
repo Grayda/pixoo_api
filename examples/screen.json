@@ -1,0 +1,21 @@
+{
+    "image": "",
+    "type": 4,
+    "text": [{
+        "x": 1,
+        "y": 1,
+        "width": 62,
+        "colour": "#FF0000",
+        "text_type": 22,
+        "text": "Hello World!",
+        "font": 8
+    }, {
+        "x": 1,
+        "y": 16,
+        "width": 62,
+        "colour": "#FFFF00",
+        "text_type": 17,
+        "text": "",
+        "font": 8
+    }]
+}
