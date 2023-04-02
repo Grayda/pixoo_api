@@ -112,7 +112,7 @@ def _checkForDevice():
 
     return device is not None and isinstance(device, DivoomDevice)
 
-def _checkIfLoggedIn():
+def _isLoggedIn():
     """
     Check if the user has logged in to Divoom
 
@@ -144,25 +144,35 @@ def sendOnlineCommand(command: str, parameters={}):
 
     """
 
-    # ..and if we're calling an endpoint that is NOT the login and logout endpoints
-    if command not in ["UserLogin", "UserLogout", "Device/ReturnSameLANDevice"]:
-        # If we haven't logged in..
-        if user == None:
+    # If the command we're calling is one of the "doesn't require login" ones
+    if command in ["UserLogin", "UserLogout", "Device/ReturnSameLANDevice"]:
+
+        # Just call the API
+        try:
+            return callPixooAPI(data={}, hostname="appin.divoom-gz.com", endpoint=command, https=True)
+        except Exception as e:
+            raise e
+
+    else:
+
+        # And if we haven't logged in
+        if not _isLoggedIn():
             
             # Return an error, because we need to log in to use these
             raise Exception(
                 "Can't call command, not logged in to Divoom API!")
 
-    # If we've set a user
-    if user and device:
-        # Add the common fields here
-        data = {
-            "DeviceId": device["DeviceId"],
-            "Token": user["Token"],
-            "UserId": user["UserId"]
-        }
-    else:
-        data = {}
+        # Or if we haven't set a device 
+        elif not _checkForDevice():
+            raise Exception(
+                "Can't call command, no device set!")
+
+    # Add the common fields here
+    data = {
+        "DeviceId": device["DeviceId"],
+        "Token": user["Token"],
+        "UserId": user["UserId"]
+    }
 
     # Then tack on any parameters (which are a dictionary)
     data.update(parameters)
@@ -1131,7 +1141,7 @@ def reboot():
     # NOTE: You don't need to actually specify the DeviceId like the API suggests.
 
     try:
-        sendCommand(command="Device/SysReboot", wait=False)
+        sendCommand(command="Device/SysReboot")
     except Exception as e:
         raise e
 
@@ -1585,6 +1595,9 @@ def drawText(options: List[TextOptions]):
     Exception
         Returns an exception if the API or the request returned an error
     """
+
+    if not isinstance(options, List):
+        options = [options]
 
     textPackets = []
     print(options)

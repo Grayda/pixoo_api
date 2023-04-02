@@ -129,23 +129,23 @@ pixoo.sendGIF(type=giftype, filename=filename)
 
 # Draw text to the screen (only after using sendGIF with the LOCALFILE, DATA or URLDATA GIF types)
 textOptions = [{
-    id: 0,
-    x: 0,
-    y: 0,
-    direction: pixoo.TextDirection.LEFT.value,
-    font: 8,
-    width: 64,
-    text: "Hello World!",
-    colour: "#FF0000"
+    "id": 0,
+    "x": 0,
+    "y": 0,
+    "direction": pixoo.TextDirection.LEFT.value,
+    "font": 8,
+    "width": 64,
+    "text": "Hello World!",
+    "colour": "#FF0000"
 }, {
-    id: 1,
-    x: 0,
-    y: 21,
-    direction: pixoo.TextDirection.LEFT.value,
-    font: 8,
-    width: 64,
-    text: "Another Line!",
-    colour: "#00FF00"
+    "id": 1,
+    "x": 0,
+    "y": 21,
+    "direction": pixoo.TextDirection.LEFT.value,
+    "font": 8,
+    "width": 64,
+    "text": "Another Line!",
+    "colour": "#00FF00"
 }]
 
 pixoo.drawText(options=textOptions)
