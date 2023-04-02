@@ -549,6 +549,20 @@ def getSettings():
 
     return response
 
+def setSettings(settings: dict):
+    """
+    Set device settings
+
+    Sets various device settings
+    """
+
+    try:
+        sendCommand("Channel/SetAllConf", {
+            "Brightness": 10
+        })
+    except Exception as e:
+        raise e
+
 
 def getBrightness():
     """
