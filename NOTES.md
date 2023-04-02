@@ -27,6 +27,8 @@ I think the Pixoo 64 seems to connect via bluetooth to do the initial setup, as 
 
 - The app makes a lot of calls to `rongcfg.com` and `rongnav.com`. I think they're just logging / data collection stuff, so they might be worth blocking on your local network, in case it's phoning home a bunch of info?
 - Divoom runs an MQTT server on appin.divoom-gz.com. You can connect without authentication, but it doesn't really do much. I can't get any data in or out of it.
+  - I think there might also be an MQTT server on the Pixoo 64 itself? You can't connect to it, but it can connect to you somehow? 
+  - Conversely, the device might connect to Divoom's MQTT server, so if you want a purely offline device (after geting it set up?) then you might need to do some DNS redirecting
 
 ## Sending images
 
