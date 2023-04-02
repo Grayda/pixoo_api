@@ -7,6 +7,7 @@ import base64
 import hashlib
 from io import BytesIO
 from math import floor
+import json
 
 # Import our enums and such so that you can easily use them in the same class
 from pixooapi.types import *
@@ -166,7 +167,7 @@ def sendOnlineCommand(command: str, parameters={}):
 
     # Then tack on any parameters (which are a dictionary)
     data.update(parameters)
-
+    print(data)
     try:
         return callPixooAPI(data=data, hostname="appin.divoom-gz.com", endpoint=command, https=True)
 
@@ -299,7 +300,7 @@ def callPixooAPI(data: dict, hostname=None, endpoint="post", https=False):
 
     if response:
         # Now we need to check for errors
-        error = checkForErrors(response)
+        error = _checkForErrors(response)
 
         if error:
             raise Exception("Error code returned from API: {message} ({code})".format(
@@ -308,7 +309,7 @@ def callPixooAPI(data: dict, hostname=None, endpoint="post", https=False):
     return response
 
 
-def checkForErrors(response: dict):
+def _checkForErrors(response: dict):
     """
     Checks a response for errors
 
@@ -1100,12 +1101,38 @@ def setScoreboard(redScore: int, blueScore: int):
     """
 
     try:
-        sendCommand(command="Tools/SetScoreBoard",
+        sendOnlineCommand(command="Tools/SetScoreBoard",
                             parameters={"BlueScore": blueScore, "RedScore": redScore})
     except Exception as e:
         raise e
 
     return {"Red": redScore, "Blue": blueScore}
+
+def getScoreboard():
+    """
+    Get the scoreboard scores
+
+    Gets the scoreboard scores. Requires a Divoom account
+
+    Parameters
+    ----------
+
+    Returns
+    -------
+
+    dict
+        Dictionary with two keys, Red and Blue
+    Exception 
+        Returns an exception if the API or the request returned an error
+        
+    """
+
+    try:
+        response = sendCommand("Tools/GetScoreBoard")
+    except Exception as e:
+        raise e
+
+    return response
 
 
 def reboot():
@@ -1832,36 +1859,95 @@ def deleteAlarm(id: int | str):
     except Exception as e:
         raise e
 
-
-def uploadFileToDevice(file: str):
+def loadScreenFromFile(file: str):
     """
-    Upload a GIF to the device
+    Display a screen using a JSON file
 
-    Uploads a GIF to the device.
+    Display a custom screen using a JSON file. This is a convenient
+    way of playing a GIF and drawing text over the top instead of having 
+    to call everything separately. Kind of like a custom clock
 
     Parameters
     ----------
+
     file : str
-        The local file to upload
+        The JSON file you wish to load. See examples/screen.json for details
 
     Returns
     -------
+
     bool
-        Returns True on success
+        Returns True for now
     Exception
         Returns an exception if the API or the request returned an error
+
+    """
+
+    with open(file) as json_file:
+        data = json.load(json_file)
+
+        try:
+            # First, send the GIF
+            sendGIF(type=data["type"], filename=data["image"])
+
+            # Then send the text
+            drawText(data["text"])        
+
+        except Exception as e:
+            raise e 
+
+def setNightMode(state: bool | int, start: int | datetime.time | None, end: int | datetime.time | None, brightness: int = 50):
+    """
+    Sets Night Mode
+
+    Sets night mode, which dims the display during certain hours
+
+    Parameters
+    ----------
+
+    state : bool | int
+        Whether night mode is enabled or not
+    start : int | datetime.time | None
+        What time to start night mode. If it's an int,
+        then it's the number of minutes since midnight. For
+        example, to start at 11pm, you'd enter 1380.
+        If start is None, then state is set to False
+    end : int | datetime.time | None
+        Similar to start, what time to end night mode.
+    brightness : int, optional
+        What brightness to set the screen to during night mode. Defaults to 50%
+
+    Returns
+    -------
+
+    bool
+        Returns True for now.
+        TODO: Make this return the schedule
+
     """
 
     try:
 
-        frames = _fileToFrames(
-            filename="e:\\downloads\\Frankenstein_icon.gif")
+        if isinstance(start, int) and start > 1440:
+            raise Exception("Start time is greater than 1440 minutes!")
+        elif isinstance(end, int) and end > 1440:
+            raise Exception("End time is greater than 1440 minutes!")        
 
-        response = sendOnlineCommand(command="Draw/UpLoadAndSend", parameters={
-            "upFile": frames
+        if(start == end):
+            state = False
+
+        if isinstance(start, datetime.time):
+            startTime = (start.hour * 60) + start.minute
+        
+        if isinstance(end, datetime.time):
+            endTime = (end.hour * 60) + end.minute 
+
+        sendOnlineCommand("Channel/SetNightView", {
+            "StartTime": startTime,
+            "EndTime": endTime,
+            "OnOff": int(state),
+            "Brightness": brightness
         })
-
-        return response
 
     except Exception as e:
         raise e
