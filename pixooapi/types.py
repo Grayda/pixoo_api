@@ -14,12 +14,16 @@ class TemperatureMode(Enum):
     CELSIUS = 0
     FAHRENHEIT = 1
 
+class TimeMode(Enum):
+    TIME12HOUR = 0
+    TIME24HOUR = 1
+
 # Screen rotation
 class Rotation(Enum):
     ROTATE0 = 0 # Not rotated
-    ROTATE90 = 1 # Rotated left
+    ROTATE90 = 1 # Rotated right
     ROTATE180 = 2 # Upside down
-    ROTATE270 = 3 # Rotated right
+    ROTATE270 = 3 # Rotated left
 
 # The state of the screen
 class Screen(Enum):
@@ -36,6 +40,18 @@ class Colour(NamedTuple):
     red: int
     green: int
     blue: int
+
+# The date format. 
+# Formats ending in "HYPHEN" are separated by dashes
+# e.g. YYYY-MM-DD, while "PERIOD" are seperated by
+# periods, e.g. YYYY.MM.DD
+class DateFormat(Enum):
+    YYYYMMDDHYPHEN: 0
+    DDMMYYYYHYPHEN: 1
+    MMDDYYYYHYPHEN: 2
+    YYYYMMDDPERIOD: 3
+    DDMMYYYYPERIOD: 4
+    MMDDYYYYPERIOD: 5
 
 # When on the cloud channel, what category of images to show
 class CloudChannelCategory(Enum):

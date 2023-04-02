@@ -549,21 +549,6 @@ def getSettings():
 
     return response
 
-def setSettings(settings: dict):
-    """
-    Set device settings
-
-    Sets various device settings
-    """
-
-    try:
-        sendCommand("Channel/SetAllConf", {
-            "Brightness": 10
-        })
-    except Exception as e:
-        raise e
-
-
 def getBrightness():
     """
     Get the brightness of the device
@@ -703,6 +688,172 @@ def getChannel():
 
     return response["SelectIndex"]
 
+
+def setHourMode(mode: TimeMode | int):
+    """
+    Set 12 or 24 mode
+
+    Sets the clock to 12 or 24 hour mode
+
+    Parameters
+    ----------
+
+    mode : TimeMode | int 
+        The mode to set. If an integer, 0 = 12 hour mode, 1 = 24 mode
+        TimeMode cna be one of the following:
+
+        TimeMode.TIME12HOUR
+        TimeMode.TIME24HOUR
+
+    Returns
+    -------
+
+    int
+        Returns the time mode. 0 for 12 hour mode, 1 for 24 hour mode
+
+    """
+
+    try:
+        sendCommand(command="Device/SetTime24Flag", parameters={ "Mode": mode })
+    except Exception as e:
+        raise e
+
+    return mode
+
+
+def setEnhancedBrightnessMode(mode: bool):
+    """
+    Set Enhanced Brightness Mode
+
+    Sets enhanced brightness mode. To use this, the device must be
+    plugged into a 5v, 3A or higher USB adapter.
+
+    This setting doesn't persist between reboots, so you'll need to
+    set it each time you want the brightness
+
+    Parameters
+    ----------
+
+    mode : bool
+        True for enhanced brightness, False for regular brightness
+
+    Returns
+    -------
+
+    bool
+        The mode it's set to
+    """
+
+    try:
+        sendOnlineCommand(command="Sys/SetConf", parameters={ "HighLight": mode })
+    except Exception as e:
+        raise e
+
+    return mode
+
+
+def setDateFormat(format: DateFormat):
+    """
+    Set Date Format
+
+    Sets the date format
+
+    Parameters
+    ----------
+
+    format : DateFormat
+        The date format. Can be one of:
+
+        DateFormat.YYYYMMDDHYPHEN
+            YYYY-MM-DD
+        DateFormat.DDMMYYYYHYPHEN
+            DD-MM-YYYY
+        DateFormat.MMDDYYYYHYPHEN
+            MM-DD-YYYY
+        DateFormat.YYYYMMDDPERIOD
+            YYYY.MM.DD
+        DateFormat.DDMMYYYYPERIOD
+            DD.MM.YYYY
+        DateFormat.MMDDYYYYPERIOD
+            MM.DD.YYYY
+
+    Returns
+    -------
+
+    int
+        The format it's set to
+    """
+
+    try:
+        sendOnlineCommand(command="Sys/SetConf", parameters={ "DateFormat": format })
+    except Exception as e:
+        raise e
+
+    return format
+
+def setRotationAngle(angle: Rotation):
+    """
+    Rotate the display
+
+    Rotates the display. Useful if you're mounting your device in a strange way
+
+    Parameters
+    ----------
+
+    angle : Rotation
+        The angle to rotate the device. Can be one of the following:
+
+        Rotation.ROTATE0
+            No rotation
+        Rotation.ROTATE90
+            Rotated right
+        Rotation.ROTATE180
+            Rotated 180
+        Rotation.ROTATE270
+            Rotated left 
+
+    Returns
+    -------
+
+    int
+        The angle of the display
+
+    """
+
+    try:
+        sendCommand(command="Device/SetScreenRotationAngle", parameters={ "Mode": angle })
+    except Exception as e:
+        raise e
+    
+    return angle
+
+def setMirroredMode(mirrored: bool):
+    """
+    Set mirrored mode
+
+    Mirrors the display. Useful if mounting to be viewed in a mirror
+    (for example, in an infinity mirror setup or something?)
+
+    Parameters
+    ----------
+
+    mirrored : bool
+        If the display should be mirrored. True for mirrored, False for not
+
+    Returns
+    -------
+
+    bool
+        True for mirrored, False for not
+
+    """
+
+    try:
+        sendCommand(command="Device/SetMirrorMode", parameters={ "Mode": int(mirrored) })
+    except Exception as e:
+        raise e
+    
+    return mirrored
 
 def setChannel(channel: Channels):
     """
@@ -1153,7 +1304,7 @@ def getScoreboard():
     """
 
     try:
-        response = sendCommand("Tools/GetScoreBoard")
+        response = sendCommand(command="Tools/GetScoreBoard")
     except Exception as e:
         raise e
 
@@ -1953,7 +2104,7 @@ def getNightMode():
 
     try:
 
-        response = sendOnlineCommand("Channel/GetNightView", { "PacketFlag": 0 })
+        response = sendOnlineCommand(command="Channel/GetNightView")
 
         startTime = response["StartTime"]
         endTime = response["EndTime"]
@@ -2018,7 +2169,7 @@ def setNightMode(state: bool | int, start: int | datetime.time | None, end: int 
         if isinstance(end, datetime.time):
             endTime = (end.hour * 60) + end.minute 
 
-        sendOnlineCommand("Channel/SetNightView", {
+        sendOnlineCommand(command="Channel/SetNightView", parameters={
             "StartTime": startTime,
             "EndTime": endTime,
             "OnOff": int(state),
