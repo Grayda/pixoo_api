@@ -1528,7 +1528,7 @@ def setNoiseMeter(status: Status | bool | int):
     return status
 
 
-def _fileToFrames(filename: str, url=False, id=0, resample: Image.Resampling | int = Image.Resampling.BICUBIC.value):
+def _fileToFrames(filename: str, url=False, id=0, resample: Image.Resampling | int = Image.Resampling.BICUBIC.value, size=64, maxFrames = 60):
     """
     Convert a file to base64 frames
 
@@ -1569,8 +1569,8 @@ def _fileToFrames(filename: str, url=False, id=0, resample: Image.Resampling | i
     # Non-animated images don't have frames, so we need to check if the attribute exists and if it doesn't, just set totalFrames to 1
     if not hasattr(img, "n_frames"):
         totalFrames = 1
-    elif img.n_frames > 60:
-        totalFrames = 60
+    elif img.n_frames > maxFrames:
+        totalFrames = maxFrames
     else:
         totalFrames = img.n_frames
 
@@ -1582,9 +1582,9 @@ def _fileToFrames(filename: str, url=False, id=0, resample: Image.Resampling | i
         # Convert it to RGB because the device expects a list of red, green and blue pixels
         imgrgb = img.convert(mode="RGB")
 
-        if imgrgb.size[0] > 64 or imgrgb.size[1] > 64:
-            imgrgb.thumbnail(size=(64, 64), resample=resample)
-            imgrgb = ImageOps.pad(image=imgrgb, size=(64, 64))
+        if imgrgb.size[0] > size or imgrgb.size[1] > size:
+            imgrgb.thumbnail(size=(size, size), resample=resample)
+            imgrgb = ImageOps.pad(image=imgrgb, size=(size, size))
 
         if "duration" in img.info:
             duration = int(img.info["duration"])
