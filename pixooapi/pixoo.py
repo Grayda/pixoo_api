@@ -689,6 +689,92 @@ def getChannel():
     return response["SelectIndex"]
 
 
+def setTimezone(timezone: str):
+    """
+    Set the device timezone
+
+    Sets the timezone on the device. 
+
+    Parameters
+    ----------
+
+    timezone : str
+        The timezone to set. Must be a string like "GMT-5" or "UTC"
+
+    Returns
+    -------
+
+    str
+        The timezone you just passed.
+    Exception
+        Returns an exception if the API or the request returned an error  
+    
+    """
+
+    try:
+        sendCommand(command="Sys/TimeZone", parameters={ "TimeZoneValue": timezone })
+    except Exception as e:
+        raise e
+    
+    return timezone
+
+def getTime():
+    """
+    Get the device's current time
+
+    Gets the currently set time on the device
+
+    Parameters
+    ----------
+
+    Returns
+    -------
+
+    datetime.datetime
+        The time as a datetime.datetime
+
+    """
+
+    try:
+        response = sendCommand(command="Device/GetDeviceTime")
+        time = datetime.datetime.fromtimestamp(response["UTCTime"])
+
+    except Exception as e:
+        raise e
+
+    return time
+
+def setTime(time: int | datetime.datetime):
+    """
+    Set the time on the device
+
+    Sets the time on the device.
+
+    Parameters
+    ----------
+
+    time : int | datetime.datetime | datetime.time
+        The time to set. Can be a datetime or a Unix timestamp
+
+    Returns
+    -------
+
+    datetime.datetime
+        The time you passed as a datetime.datetime
+
+    """
+
+    try:
+
+        if isinstance(time, datetime.datetime):
+            time = time.timestamp()
+
+        sendCommand(command="Device/SetUTC", parameters={ "Utc": time })
+    except Exception as e:
+        raise e
+
+    return datetime.datetime.fromtimestamp(time)
+
 def setHourMode(mode: TimeMode | int):
     """
     Set 12 or 24 mode

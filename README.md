@@ -4,7 +4,7 @@ A Python library for the Divoom Pixoo 16 / 64.
 
 # Usage
 
-Please see `pixooapi/pixoo.py` and `pixooapi/types.py`
+Run `python -m pydoc pixooapi.pixoo` and `python -m pydoc -w pixooapi.types` to see the complete, up-to-date documentation
 
 ```python
 
@@ -19,8 +19,8 @@ devices = pixoo.findDevices()
 pixoo.setDevice(devices[0])
 # >>> {'DeviceName': 'Pixoo64', 'DeviceId': 100022491, 'DevicePrivateIP': '192.168.1.100', 'DeviceMac': 'a4bed121fa10'}
 
-# Or alternatively, get the first device on the network
-pixoo.device = pixoo.getFirstDevice()
+# Or alternatively, get the first device on the network and set it.
+pixoo.setDevice(pixoo.getFirstDevice())
 # >>> {'DeviceName': 'Pixoo64', 'DeviceId': 100022491, 'DevicePrivateIP': '192.168.1.100', 'DeviceMac': 'a4bed121fa10'}
 
 # Set a heartbeat packet to the device
@@ -28,7 +28,7 @@ pixoo.heartbeat()
 # >>> True 
 
 # Read a list of commands from a URL and execute them
-pixoo.sendCommandsFromURL(ipAddress="192.168.1.100", url="https://example.com/commandlist.txt")
+pixoo.sendCommandsFromURL(url="https://example.com/commandlist.txt")
 # >>> True
 
 # Gets the device's settings
@@ -151,22 +151,34 @@ textOptions = [{
 pixoo.drawText(options=textOptions)
 # >>> [0, 1]
 
-# There's a bunch of functions that are only accessible with a Divoom account. These are:
+# There's a bunch of functions that are only accessible with a Divoom account. These include:
 
 # Log in to the Divoom online API / your Divoom account
 user = pixoo.divoomLogin(email="user@example.com", password="MyPassword1234")
+# >>> {'Token': 1679639166, 'UserId': 402379837} 
+
+# Get details about the user
+print(pixoo.user)
 # >>> {'Token': 1679639166, 'UserId': 402379837} 
 
 # Log out of your Divoom account
 pixoo.divoomLogout(userID=user.UserId, token=user.Token)
 # >>> True
 
+# Set some alarms
+alarmTime1 = datetime.time(hour=8, minute=0)
+pixoo.setAlarm(time=alarmTime1)
+# >>> 0
+alarmTime2 = datetime.time(hour=9, minute=0)
+pixoo.setAlarm(time=alarmTime2)
+# >>> 1
+pixoo.deleteAlarm(0)
+# >>> 0
+
 # Get all the alarms you've set
 pixoo.getAlarms()
-# >>> []
+# >>> { "Id": 0, ... }
 
-alarmTime = datetime.time(hour=8, minute=0)
-pixoo.setAlarm(time=alarmTime)
-# >>> 0
+
 
 ```
