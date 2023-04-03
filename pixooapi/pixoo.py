@@ -12,7 +12,7 @@ import json
 # Import our enums and such so that you can easily use them in the same class
 from pixooapi.types import *
 
-# what device to use
+# The device that we're communicating with.
 device: dict | DivoomDevice = None
 
 # Your user details, if logging in to the Divoom API (instead of the local one)
@@ -34,17 +34,19 @@ def getFirstDevice():
     Returns
     -------
 
-    DivoomDevice | list
-        The first device found, or an empty list 
+    DivoomDevice | None
+        The first device found, or None if nothing found 
 
     """
 
+    # Find all the devices on the same network
     foundDevices = findDevices()
 
+    # If we found one, return the first one, otherwise, return None
     if len(foundDevices) > 0:
         return foundDevices[0]
     else:
-        return []
+        return None
 
 
 def setDevice(deviceDetails: dict | str | DivoomDevice = None):
@@ -71,7 +73,8 @@ def setDevice(deviceDetails: dict | str | DivoomDevice = None):
 
     # If we passed a string (i.e. an IP address)
     if isinstance(device, str):
-        # Find all the devices and pick the first one
+        # Find all the devices and pick the first one that matches the IP address.
+        # Technically we don't need to findDevices(), but for the online commands we need the device ID
         devices = findDevices()
 
         search = {"DevicePrivateIP": device}
@@ -118,13 +121,23 @@ def _isLoggedIn():
     Check if the user has logged in to Divoom
 
     Checks if the user has logged in to their Divoom account
+
+    Parameters
+    ----------
+
+    Returns
+    -------
+
+    bool
+        Returns True if the user has logged in, False if not
+
     """
 
     return user is not None and isinstance(user, DivoomUser)
 
 def sendOnlineCommand(command: str, parameters={}):
     """
-    Send a command to the Divoom API
+    Send a command to the Divoom Online API
 
     Sends a command to Divoom's online API. This constructs the necessary payload for you
 
