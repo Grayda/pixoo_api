@@ -236,7 +236,7 @@ def sendCommand(command: str, parameters={}, batch=False):
         raise e
 
 
-def sendBatchCommands(parameters: dict, port=80, wait=False):
+def sendBatchCommands(parameters: list[dict], port=80, wait=False):
     """
     Send multiple commands to the device
 
@@ -245,14 +245,14 @@ def sendBatchCommands(parameters: dict, port=80, wait=False):
     Parameters
     ----------
 
-    parameters : dict
-        Any additional parameters you want to send (e.g. { "EqPosition": 0 })
+    parameters : list[dict]
+        A list of commands to send. Same format as sendCommand, but in a list
     port : int, optional
         The port to send on. Defaults to port 80 if not specified
-    wait : bool
-        If True, the command will wait for a response. If False, will return immediately. Good for commands that interrupt connectivity, like reboot
+
     Returns
     -------
+    
     bool
         Returns True, as the API won't return the results for each request. This means you can't use this to retrieve the weather and settings in one call, for example
     Exception
@@ -807,7 +807,7 @@ def setHourMode(mode: TimeMode | int):
     return mode
 
 
-def setEnhancedBrightnessMode(mode: bool):
+def setEnhancedBrightnessMode(enabled: bool):
     """
     Set Enhanced Brightness Mode
 
@@ -820,14 +820,14 @@ def setEnhancedBrightnessMode(mode: bool):
     Parameters
     ----------
 
-    mode : bool
+    enabled : bool
         True for enhanced brightness, False for regular brightness
 
     Returns
     -------
 
     bool
-        The mode it's set to
+        True for enabled, False for disabled
     """
 
     try:
@@ -1456,7 +1456,7 @@ def setVisualizerEQPosition(position: int):
     return True
 
 
-def setCloudChannelCategory(display: CloudChannelCategory | int):
+def setCloudChannelCategory(category: CloudChannelCategory | int):
     """
     Set the cloud channel image category
 
@@ -1487,14 +1487,14 @@ def setCloudChannelCategory(display: CloudChannelCategory | int):
 
     try:
         sendCommand(command="Channel/CloudIndex",
-                            parameters={"Index": CloudChannelCategory})
+                            parameters={"Index": category})
     except Exception as e:
         raise e
 
     return True
 
 
-def setNoiseMeter(status: Status | bool | int):
+def setNoiseMeter(enabled: Status | bool | int):
     """
     Start or stop the noise meter
 
@@ -1503,7 +1503,7 @@ def setNoiseMeter(status: Status | bool | int):
     Parameters
     ----------
 
-    status : Status | int | bool
+    enabled : Status | int | bool
         The status of the noise meter. Can be one of:
 
         Status.STOP : 0
@@ -2261,6 +2261,13 @@ def setNightMode(state: bool | int, start: int | datetime.time | None, end: int 
             "OnOff": int(state),
             "Brightness": brightness
         })
+
+        return {
+            "start": startTime,
+            "end": endTime,
+            "state": int(state),
+            "brightness": brightness
+        }
 
     except Exception as e:
         raise e

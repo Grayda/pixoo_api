@@ -12,28 +12,56 @@ Run `python -m pydoc pixooapi.pixoo` and `python -m pydoc -w pixooapi.types` to 
 from pixooapi import pixoo
 
 # Find all Pixoo devices on your network
-devices = pixoo.findDevices()
+alldevices = pixoo.findDevices()
 # >>> [{'DeviceName': 'Pixoo64', 'DeviceId': 100022491, 'DevicePrivateIP': '192.168.1.100', 'DeviceMac': 'a4bed121fa10'}]
 
 # Then tell the pixoo module to use the first device
-pixoo.setDevice(devices[0])
+pixoo.setDevice(deviceDetails=alldevices[0])
 # >>> {'DeviceName': 'Pixoo64', 'DeviceId': 100022491, 'DevicePrivateIP': '192.168.1.100', 'DeviceMac': 'a4bed121fa10'}
 
 # Or alternatively, get the first device on the network and set it.
-pixoo.setDevice(pixoo.getFirstDevice())
+pixoo.setDevice(deviceDetails=pixoo.getFirstDevice())
 # >>> {'DeviceName': 'Pixoo64', 'DeviceId': 100022491, 'DevicePrivateIP': '192.168.1.100', 'DeviceMac': 'a4bed121fa10'}
 
 # Set a heartbeat packet to the device
 pixoo.heartbeat()
 # >>> True 
 
-# Read a list of commands from a URL and execute them
-pixoo.sendCommandsFromURL(url="https://example.com/commandlist.txt")
+# Send a bunch of commands together
+pixoo.sendBatchCommands(parameters=[{
+            “Command”:”Channel/SetBrightness”,
+            “Brightness”:100
+        }, {
+            “Command”:”Device/SetWhiteBalance”,
+            “RValue”:100,
+            “GValue”:100,
+            “BValue”:100
+        }])
+# >>> True
+
+# Manually send a command
+pixoo.sendCommand(command="Channel/SetBrightness", parameters={ "Brightness": 100 })
+# >>> { "Brightness": 100 }
+
+# Read a list of commands from a URL and execute them. 
+# File should be the same format as sendBatchCommands
+pixoo.sendCommandsFromURL(url="https://example.com/commandlist.json")
 # >>> True
 
 # Gets the device's settings
 pixoo.getSettings()
 # >>> {"Brightness": 100, "RotationFlag": 1, ...}
+
+# Set the current time
+pixoo.setTime(time=datetime.time(13, 0, 0))
+
+# Gets the current time from the clock
+pixoo.getTime()
+# >>> datetime.time(13, 0, 0)
+
+# Set the current timezone
+pixoo.setTimezone(timezone="GMT-5")
+# >>> GMT-5
 
 # Gets the brightness of the screen
 pixoo.getBrightness()
@@ -111,21 +139,30 @@ pixoo.reboot()
 # >>> True
 
 # Sets the position of the EQ
-pixoo.setVisualzerEQPosition(0)
+pixoo.setVisualzerEQPosition(position=0)
 # >>> 0
 
 # Set the cloud category. See CloudChannelCategory in types.py for the other values
-pixoo.setCloudChannelCategory(pixoo.CloudChannelCategory.RECOMMENDED.value)
+pixoo.setCloudChannelCategory(category=pixoo.CloudChannelCategory.RECOMMENDED.value)
 # >>> 0
 
 # Turns on the dB (noise) meter
-pixoo.setNoiseMeter(True)
+pixoo.setNoiseMeter(enabled=True)
 # >>> True
 
 # Sends a GIF to the display
 giftype = pixoo.GIFType.LOCALFILE.value
 filename = "c:\\users\\JohnSmith\\Pictures\\MyGIF.gif"
 pixoo.sendGIF(type=giftype, filename=filename)
+# >>> True
+
+# Get the ID of the GIF currently playing
+pixoo.getGIFID()
+# >>> 0
+
+# Reset the GIF ID
+pixoo.resetGIFID()
+# >>> 0
 
 # Draw text to the screen (only after using sendGIF with the LOCALFILE, DATA or URLDATA GIF types)
 textOptions = [{
@@ -154,16 +191,16 @@ pixoo.drawText(options=textOptions)
 # There's a bunch of functions that are only accessible with a Divoom account. These include:
 
 # Log in to the Divoom online API / your Divoom account
-user = pixoo.divoomLogin(email="user@example.com", password="MyPassword1234")
+pixoo.divoomLogin(email="user@example.com", password="MyPassword1234")
 # >>> {'Token': 1679639166, 'UserId': 402379837} 
 
 # Get details about the user
 print(pixoo.user)
 # >>> {'Token': 1679639166, 'UserId': 402379837} 
 
-# Log out of your Divoom account
-pixoo.divoomLogout(userID=user.UserId, token=user.Token)
-# >>> True
+# Manually send a command to the Divoom online API
+pixoo.sendOnlineCommand(command="Alarm/Get")
+# >>> [{ "AlarmId": 0, "AlarmName": "Alarm", "AlarmTime": 1679639166, "DeviceId": 100022491, "EnableFlag": 1, "ImageFileId": '', "RepeatArray": [1, 1, 1, 1, 1, 1, 1] }, { "AlarmId": 1, ... }]
 
 # Set some alarms
 alarmTime1 = datetime.time(hour=8, minute=0)
@@ -172,13 +209,46 @@ pixoo.setAlarm(time=alarmTime1)
 alarmTime2 = datetime.time(hour=9, minute=0)
 pixoo.setAlarm(time=alarmTime2)
 # >>> 1
-pixoo.deleteAlarm(0)
+pixoo.deleteAlarm(id=0)
+# pixoo.deleteAlarm("all")
 # >>> 0
 
 # Get all the alarms you've set
 pixoo.getAlarms()
-# >>> { "Id": 0, ... }
+# >>> [{ "AlarmId": 0, "AlarmName": "Alarm", "AlarmTime": 1679639166, "DeviceId": 100022491, "EnableFlag": 1, "ImageFileId": '', "RepeatArray": [1, 1, 1, 1, 1, 1, 1] }, { "AlarmId": 1, ... }]
 
+# Set Night Mode to dim the display during certain hours
+pixoo.setNightMode(state=True, start=datetime.time(23, 30, 0), end=datetime.time(6, 0, 0), brightness=50)
+# >>> { "start": datetime.time(23, 30, 0), "end": datetime.time(6, 0, 0), "state": True, "brightness": 50 }
 
+# Get the night mode settings
+pixoo.getNightMode()
+# >>> { "start": datetime.time(23, 30, 0), "end": datetime.time(6, 0, 0), "state": True, "brightness": 50 }
+
+# Set the date format. To get the date format, use getSettings()
+pixoo.setDateFormat(format=pixoo.DateFormat.YYYYMMDDHYPHEN.value)
+# >>> 0
+
+# Sets the enhanced brightness mode to make the display
+# brighter. Requires a 5V, 3A or higher power supply
+# otherwise the device will just continuously reboot
+pixoo.setEnhancedBrightnessMode(enabled=True)
+# >>> True
+
+# Sets the device to 12 or 24 hour mode
+pixoo.setHourMode(mode=pixoo.TimeMode.TIME12HOUR.value)
+# >>> 0
+
+# Mirror the display
+pixoo.setMirroredMode(mirrored=True)
+# >>> True
+
+# Rotate the display
+pixoo.setRotationAngle(angle=pixoo.Rotation.ROTATE180.value)
+# >>> 2
+
+# Log out of your Divoom account
+pixoo.divoomLogout(userID=user.UserId, token=user.Token)
+# >>> True
 
 ```
