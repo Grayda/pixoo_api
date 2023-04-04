@@ -91,12 +91,51 @@ def setDevice(deviceDetails: dict | str | DivoomDevice = None):
     elif isinstance(deviceDetails, DivoomDevice):
         device = deviceDetails
     elif isinstance(deviceDetails, dict):
-        print(device)
         device = DivoomDevice(DevicePrivateIP=deviceDetails["DevicePrivateIP"], DeviceMac=deviceDetails["DeviceMac"],
-                        DeviceId=deviceDetails["DeviceId"], DeviceName=deviceDetails["DeviceName"])
+                              DeviceId=deviceDetails["DeviceId"], DeviceName=deviceDetails["DeviceName"])
 
     return device
 
+
+def _checkOnlineCommand(command: str):
+    """
+    Check requirements for online commands
+
+    Check if the command we're calling needs a user set, a device set, both, or none
+
+    Parameters
+    ----------
+
+    Returns
+    -------
+
+    bool
+        Returns True if you can call the online command
+    Exception
+        Throws an exception if the command requires something further.
+
+    """
+
+    # If the command is one of the "always accessible" ones 
+    # (AKA it doesn't need you to pass a device or user details):
+    if command in ["UserLogin", "Device/ReturnSameLANDevice"]:
+        return 0
+
+    # If the command requires a user, but not a list:
+    if command in ["Device/GetList"]:
+        # If we're not logged in 
+        if not _isLoggedIn():
+            # Throw an error
+            raise Exception("Command requires you to be logged in")
+
+        return 1
+
+    if not _isLoggedIn():
+        raise Exception("Command requies you to be logged in")
+    if not _checkForDevice():
+        raise Exception("Command requies a device to be set")
+    
+    return 2
 
 def _checkForDevice():
     """
@@ -114,7 +153,8 @@ def _checkForDevice():
         Returns True if device is set, False otherwise
     """
 
-    return device is not None and isinstance(device, DivoomDevice)
+    return isinstance(device, DivoomDevice)
+
 
 def _isLoggedIn():
     """
@@ -133,7 +173,8 @@ def _isLoggedIn():
 
     """
 
-    return user is not None and isinstance(user, DivoomUser)
+    return isinstance(user, DivoomUser)
+
 
 def sendOnlineCommand(command: str, parameters={}):
     """
@@ -159,46 +200,35 @@ def sendOnlineCommand(command: str, parameters={}):
     """
 
     # If the command we're calling is one of the "doesn't require login" ones
-    if command in ["UserLogin", "UserLogout", "Device/ReturnSameLANDevice"]:
 
-        # Just call the API
-        try:
-            print(command)
-            return callPixooAPI(data=parameters, hostname="appin.divoom-gz.com", endpoint=command, https=True)
-        except Exception as e:
-            raise e
+    data = {}
 
-    else:
-
-        # And if we haven't logged in
-        if not _isLoggedIn():
-            
-            # Return an error, because we need to log in to use these
-            raise Exception(
-                "Can't call command, not logged in to Divoom API!")
-
-        # Or if we haven't set a device 
-        elif not _checkForDevice():
-            raise Exception(
-                "Can't call command, no device set!")
-
-    # Add the common fields here
-    data = {
-        "DeviceId": device["DeviceId"],
-        "Token": user["Token"],
-        "UserId": user["UserId"]
-    }
+    match _checkOnlineCommand(command=command):
+        # 0 = Just call the API, no device or login necessary
+        case 0:
+            pass
+        # 1 = We need to pass a device to the API
+        case 1:
+            data.update({
+                "Token": user["Token"],
+                "UserId": user["UserId"]
+            })
+        case 2:
+            data.update({
+                "DeviceId": device["DeviceId"],
+                "Token": user["Token"],
+                "UserId": user["UserId"]
+            })
 
     # Then tack on any parameters (which are a dictionary)
     data.update(parameters)
-    
+
+    # Just call the API
     try:
         return callPixooAPI(data=data, hostname="appin.divoom-gz.com", endpoint=command, https=True)
-
     except Exception as e:
         raise e
-
-
+    
 def sendCommand(command: str, parameters={}, batch=False):
     """
     Send a command to the device
@@ -265,7 +295,7 @@ def sendBatchCommands(parameters: list[dict], port=80, wait=False):
 
     Returns
     -------
-    
+
     bool
         Returns True, as the API won't return the results for each request. This means you can't use this to retrieve the weather and settings in one call, for example
     Exception
@@ -562,6 +592,7 @@ def getSettings():
 
     return response
 
+
 def getBrightness():
     """
     Get the brightness of the device
@@ -721,15 +752,17 @@ def setTimezone(timezone: str):
         The timezone you just passed.
     Exception
         Returns an exception if the API or the request returned an error  
-    
+
     """
 
     try:
-        sendCommand(command="Sys/TimeZone", parameters={ "TimeZoneValue": timezone })
+        sendCommand(command="Sys/TimeZone",
+                    parameters={"TimeZoneValue": timezone})
     except Exception as e:
         raise e
-    
+
     return timezone
+
 
 def getTime():
     """
@@ -757,6 +790,7 @@ def getTime():
 
     return time
 
+
 def setTime(time: int | datetime.datetime):
     """
     Set the time on the device
@@ -782,11 +816,12 @@ def setTime(time: int | datetime.datetime):
         if isinstance(time, datetime.datetime):
             time = time.timestamp()
 
-        sendCommand(command="Device/SetUTC", parameters={ "Utc": time })
+        sendCommand(command="Device/SetUTC", parameters={"Utc": time})
     except Exception as e:
         raise e
 
     return datetime.datetime.fromtimestamp(time)
+
 
 def setHourMode(mode: TimeMode | int):
     """
@@ -813,7 +848,7 @@ def setHourMode(mode: TimeMode | int):
     """
 
     try:
-        sendCommand(command="Device/SetTime24Flag", parameters={ "Mode": mode })
+        sendCommand(command="Device/SetTime24Flag", parameters={"Mode": mode})
     except Exception as e:
         raise e
 
@@ -844,11 +879,12 @@ def setEnhancedBrightnessMode(enabled: bool):
     """
 
     try:
-        sendOnlineCommand(command="Sys/SetConf", parameters={ "HighLight": mode })
+        sendOnlineCommand(command="Sys/SetConf",
+                          parameters={"HighLight": enabled})
     except Exception as e:
         raise e
 
-    return mode
+    return enabled
 
 
 def setDateFormat(format: DateFormat):
@@ -884,11 +920,13 @@ def setDateFormat(format: DateFormat):
     """
 
     try:
-        sendOnlineCommand(command="Sys/SetConf", parameters={ "DateFormat": format })
+        sendOnlineCommand(command="Sys/SetConf",
+                          parameters={"DateFormat": format})
     except Exception as e:
         raise e
 
     return format
+
 
 def setRotationAngle(angle: Rotation):
     """
@@ -920,11 +958,13 @@ def setRotationAngle(angle: Rotation):
     """
 
     try:
-        sendCommand(command="Device/SetScreenRotationAngle", parameters={ "Mode": angle })
+        sendCommand(command="Device/SetScreenRotationAngle",
+                    parameters={"Mode": angle})
     except Exception as e:
         raise e
-    
+
     return angle
+
 
 def setMirroredMode(mirrored: bool):
     """
@@ -948,11 +988,13 @@ def setMirroredMode(mirrored: bool):
     """
 
     try:
-        sendCommand(command="Device/SetMirrorMode", parameters={ "Mode": int(mirrored) })
+        sendCommand(command="Device/SetMirrorMode",
+                    parameters={"Mode": int(mirrored)})
     except Exception as e:
         raise e
-    
+
     return mirrored
+
 
 def setChannel(channel: Channels):
     """
@@ -1344,7 +1386,6 @@ def setStopwatch(start: bool | Status, reset=False):
         commands.append(sendCommand(command="Tools/SetStopWatch",
                                             parameters={"Status": int(start)}, batch=True))
 
-        print(commands)
         sendBatchCommands(parameters=commands)
 
     except Exception as e:
@@ -1377,11 +1418,12 @@ def setScoreboard(redScore: int, blueScore: int):
 
     try:
         sendOnlineCommand(command="Tools/SetScoreBoard",
-                            parameters={"BlueScore": blueScore, "RedScore": redScore})
+                          parameters={"BlueScore": blueScore, "RedScore": redScore})
     except Exception as e:
         raise e
 
     return {"Red": redScore, "Blue": blueScore}
+
 
 def getScoreboard():
     """
@@ -1399,7 +1441,7 @@ def getScoreboard():
         Dictionary with two keys, Red and Blue
     Exception 
         Returns an exception if the API or the request returned an error
-        
+
     """
 
     try:
@@ -1534,14 +1576,14 @@ def setNoiseMeter(enabled: Status | bool | int):
 
     try:
         sendCommand(command="Tools/SetNoiseStatus",
-                            parameters={"NoiseStatus": int(status)})
+                            parameters={"NoiseStatus": int(enabled)})
     except Exception as e:
         raise e
 
-    return status
+    return enabled
 
 
-def _fileToFrames(filename: str, url=False, id=0, resample: Image.Resampling | int = Image.Resampling.BICUBIC.value, size=64, maxFrames = 60):
+def _fileToFrames(filename: str, url=False, id=0, resample: Image.Resampling | int = Image.Resampling.BICUBIC.value, size=64, maxFrames=60):
     """
     Convert a file to base64 frames
 
@@ -1892,9 +1934,7 @@ def drawText(options: List[TextOptions]):
         options = [options]
 
     textPackets = []
-    print(options)
     for option in options:
-        print(option)
         # option = defaultdict(lambda:None, option)
         textPackets.append({
             "TextId": option["id"],
@@ -2137,6 +2177,7 @@ def deleteAlarm(id: int | str):
     except Exception as e:
         raise e
 
+
 def loadScreenFromFile(file: str):
     """
     Display a screen using a JSON file
@@ -2169,10 +2210,11 @@ def loadScreenFromFile(file: str):
             sendGIF(type=data["type"], filename=data["image"])
 
             # Then send the text
-            drawText(data["text"])        
+            drawText(data["text"])
 
         except Exception as e:
-            raise e 
+            raise e
+
 
 def getNightMode():
     """
@@ -2257,16 +2299,16 @@ def setNightMode(state: bool | int, start: int | datetime.time | None, end: int 
         if isinstance(start, int) and start > 1440:
             raise Exception("Start time is greater than 1440 minutes!")
         elif isinstance(end, int) and end > 1440:
-            raise Exception("End time is greater than 1440 minutes!")        
+            raise Exception("End time is greater than 1440 minutes!")
 
         if(start == end):
             state = False
 
         if isinstance(start, datetime.time):
             startTime = (start.hour * 60) + start.minute
-        
+
         if isinstance(end, datetime.time):
-            endTime = (end.hour * 60) + end.minute 
+            endTime = (end.hour * 60) + end.minute
 
         sendOnlineCommand(command="Channel/SetNightView", parameters={
             "StartTime": startTime,
