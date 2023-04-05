@@ -1,3 +1,4 @@
+import datetime 
 from typing import NamedTuple
 from enum import Enum
 
@@ -148,12 +149,33 @@ class DivoomUser(dict):
     Token: int # A timestamp showing when you logged in. This must be sent with all online API calls
     UserId: int # Your Divoom user account number. Also used with Divoom online API calls
 
+# An individual plan item (e.g. in the plan called "Daily", an item called "Wake Up" or "Do Dishes")
+class PlanItem(NamedTuple):
+    clockFileID: str
+    clockID: int
+    clockName: str 
+    repeat: list[dict] # [{'Week': 0}, {'Week': 0}, {'Week': 0}, {'Week': 0}, {'Week': 0}, {'Week': 0}, {'Week': 0}], 
+    endTime: int
+    fileID: int
+    name: str 
+    playMode: int
+    startTime: int 
+    type: int
+    playSound: bool
+
+class Plan(NamedTuple):
+    lastUpdated: datetime.datetime | int
+    id: int
+    name: str
+    enabled: bool | int
+    items: list[PlanItem]
+
 # For setting / getting alarms
 class Alarm(dict):
-    AlarmId: int
-    AlarmName: str
-    AlarmTime: int 
-    DeviceId: int 
-    EnableFlag: bool | int
-    ImageFileId: str 
-    RepeatArray: list
+    id: int
+    name: str
+    time: datetime.time | int 
+    deviceId: int 
+    enabled: bool | int
+    imageFileId: str 
+    repeat: list[int]
