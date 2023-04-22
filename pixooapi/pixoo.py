@@ -6,7 +6,7 @@ import datetime
 import base64
 import hashlib
 from io import BytesIO
-from math import floor
+import math 
 import json
 
 # Import our enums and such so that you can easily use them in the same class
@@ -120,7 +120,7 @@ def _checkOnlineCommand(command: str):
 
     # If the command is one of the "always accessible" ones 
     # (AKA it doesn't need you to pass a device or user details):
-    if command in ["UserLogin", "Device/ReturnSameLANDevice"]:
+    if command in ["UserLogin", "Device/ReturnSameLANDevice", "Cloud/GetFileData"]:
         return 0
 
     # If the command requires a user, but not a list:
@@ -2245,7 +2245,9 @@ def getNightMode():
             Whether the night mode is on or off
         brightness : int 
             The brightness of the screen during night mode
-
+    Exception
+        Returns an exception if the API or the request returned an error
+    
     """
 
     try:
@@ -2288,14 +2290,25 @@ def setNightMode(state: bool | int, start: int | datetime.time | None, end: int 
     end : int | datetime.time | None
         Similar to start, what time to end night mode.
     brightness : int, optional
-        What brightness to set the screen to during night mode. Defaults to 50%
+        What brightness to set the screen to during night mode. Defaults to 50
 
     Returns
     -------
 
-    bool
-        Returns True for now.
-        TODO: Make this return the schedule
+    dict
+        Returns the night mode schedule as a dictionary
+
+        Has the fields:
+            start : datetime.time
+                When the schedule will start, as a Python datetime.time
+            end : datetime.time
+                When the schedule will end, as a Python datetime.time
+            state : bool
+                If the schedule is active or not.
+            brightness : int
+                The brightness, expressed as an integer between 1 and 100
+    Exception
+        Returns an exception if the API or the request returned an error
 
     """
 
@@ -2322,14 +2335,88 @@ def setNightMode(state: bool | int, start: int | datetime.time | None, end: int 
             "Brightness": brightness
         })
 
-        return {
-            "start": startTime,
-            "end": endTime,
-            "state": int(state),
-            "brightness": brightness
-        }
+        return getNightMode()
 
     except Exception as e:
         raise e
 
-# from pixoo64api import pixoo; pixoo.sendGIF(ipAddress="192.168.1.92", type=pixoo.GIFType.LOCALFILE.value, filename="e:\\downloads\\Frankenstein_icon.gif"); exit()
+def downloadOnlineGIF(fileId: str, outFile: str | None):
+    """
+    Create a GIF from a Divoom file
+
+    Retrieves data about a Divoom file and creates a file out of it. This can
+    only be done on public images, and not private images
+
+    Parameters
+    ----------
+
+    fileId : str
+        The file ID of the image. For example, this Among Us image: group1/M00/0F/65/eEwpPWKMBumEPHcwAAAAAPueyb01234421
+    outFile : str | None
+        Where to save this image on disk. If not specified, will attempt to use the filename from Divoom, otherwise will default to image.gif
+
+    Returns
+    -------
+
+    str
+        Returns the full path to the file
+    Exception
+        Returns an exception if the API or the request returned an error
+
+    """
+
+    try:
+        # Call the Pixoo API to get the file
+        data = sendOnlineCommand("Cloud/GetFileData", { "FileId": fileId })
+
+        # If there's no data, then the FileId is valid, but the image is private
+        # or has had the flag set so nobody can edit / remix it.
+        if len(data["FileData"]) == 0:
+            raise Exception("No file data! Image may be set to private")
+        
+        if outFile == None:
+            if data["FileName"]:
+                outFile = data["FileName"]
+            else:
+                outFile = "image.gif"
+
+        # What will the size of the chunks be?
+        # This is the length of the data, divided by the number of frames
+        chunkSize = int((len(data["FileData"]) / int(data["PicCount"])))
+        
+        # This holds our constructed frames
+        images = []
+
+        # Work out the frame size. This is just the square root of our chunkSize
+        # For example if a chunk has 4096 items in it, the square root of that is 64, so our size is 64x64
+        frameSize = int(math.sqrt(chunkSize / 3))
+
+        # Now we split the data into lists of chunkSize
+        chunkData =  [data["FileData"][i:i + chunkSize] for i in range(0, len(data["FileData"]), chunkSize)]
+
+        # Loop through all the chunks
+        for chunk in chunkData:
+            # This holds the RGB into as tuples
+            pixelData = []
+
+            # Split the chunk into groups of three (R, G and B)
+            pixelChunks =  [chunk[i:i + 3] for i in range(0, len(chunk) - 1, 3)]
+
+            # Then loop though all the RGB values..
+            for pc in pixelChunks:
+                # ..and make a tuple out of each third
+                pixelData.append((pc[0], pc[1], pc[2]))
+
+            # Make a new image and put the pixel data in there.
+            img = Image.new("RGB", (frameSize, frameSize)).putdata(pixelData)
+
+            # Add this newly created image to our list of images
+            images.append(img)
+
+        # And now use the first frame to save all of the subsequent frames as a GIF
+        images[0].save(outFile, format="GIF", append_images=images,
+               save_all=True, duration=data["Speed"], loop=0)
+
+    except Exception as e:
+        raise e
+    
