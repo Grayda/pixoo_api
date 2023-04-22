@@ -78,8 +78,10 @@ I don't know what file format it uses, but here's some notes:
 
 I've made extremely basic images for reverse engineering purposes, they can be found here: https://github.com/Grayda/pixoo64_example_images
 
-- 64x64 and 32x32 images start with hex `11`, followed by `02` for 32x32, and `04` for 64x64. 16x16 images start with `08`. 128x128 images start with `1A 01`
-  - I suspect that between hardware revisions, Divoom updated the file format. In the APK, there's a few references to `PixelDecode64New`, `PixelDecodeSixteen`, `PixelEncode64`, `PixelEncodeSixteen` and `PixelEncodePlanet`. `PixelEncodeSixteen` is marked as deprecated in the source code, and I wonder if `PixelDecode64New` handles 32x32 and 64x64 images. ~~I don't know what `PixelEncodePlanet` does, however.~~ `PixelEncodePlanet` is for the [Divoom Planet 9](https://divoom-gz.com/product/planet.html)
+- Animations seem to start with `1A`, followed by the number of frames in the animation. For example [this file](https://f.divoom-gz.com/group1/M00/07/C3/L1ghbmHcJUKESjyQAAAAAG2IqbA7174570), which is an animation of a character from Hotline Miami, has 20 frames of animation when you download the GIF to your computer.
+- Images without animations seem to be handled differently:
+  - My basic 64x64 and 32x32 images start with hex `11`. `11` is followed by `02` for 32x32, and `04` for 64x64. 16x16 images start with `08`. 128x128 images start with `1A`, like the animations do.
+    - I suspect that between hardware revisions, Divoom updated the file format. In the APK, there's a few references to `PixelDecode64New`, `PixelDecodeSixteen`, `PixelEncode64`, `PixelEncodeSixteen` and `PixelEncodePlanet`. `PixelEncodeSixteen` is marked as deprecated in the source code, and I wonder if `PixelDecode64New` handles 32x32 and 64x64 images. ~~I don't know what `PixelEncodePlanet` does, however.~~ `PixelEncodePlanet` is for the [Divoom Planet 9](https://divoom-gz.com/product/planet.html)
 
 ### Uploading files to the Divoom gallery
 
