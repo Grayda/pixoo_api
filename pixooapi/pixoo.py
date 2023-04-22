@@ -21,6 +21,9 @@ user: dict | DivoomUser = None
 # A list of alarms set on the device
 alarms: list[Alarm] = []
 
+# If true, no calls are actually made, but are printed instead.
+debug = False
+
 
 def getFirstDevice():
     """
@@ -46,8 +49,7 @@ def getFirstDevice():
     if len(foundDevices) > 0:
         return foundDevices[0]
     else:
-        return None
-
+        raise Exception("No devices found!")
 
 def setDevice(deviceDetails: dict | str | DivoomDevice = None):
     """
@@ -347,8 +349,11 @@ def callPixooAPI(data: dict, hostname=None, endpoint="post", https=False):
     parsedUrl = urlparse(url)
     # If we've got a valid URL
     if all([parsedUrl.scheme, parsedUrl.netloc]):
-        response = request(
-            method="post", url=url, json=data).json()
+        if debug:
+            print("Sending data to {url}: {data}".format(url=url, data=data))
+        else:
+            response = request(
+                method="post", url=url, json=data).json()
     else:
         raise Exception("URL {url} is not valid!".format(url=url))
 
@@ -2111,18 +2116,18 @@ def setAlarm(time: datetime.time | datetime.timedelta | int | Timer, repeatDays=
             timeObject = time
         # If it's a Timer NamedTuple, make it into a timedelta, then into a datetime, then timestamp
         elif isinstance(time, Timer):
-            timeObject = floor((datetime.datetime.now(
+            timeObject = math.floor((datetime.datetime.now(
             ) + datetime.timedelta(minutes=time.minutes, seconds=time.seconds)).timestamp())
         # If it's a datetime, get the timestamp
         elif isinstance(time, datetime.datetime):
-            timeObject = floor(time.timestamp())
+            timeObject = math.floor(time.timestamp())
         # If this is a time, make up a date, combine it with the time, then get the timestamp
         elif isinstance(time, datetime.time):
-            timeObject = floor(datetime.datetime.combine(
+            timeObject = math.floor(datetime.datetime.combine(
                 datetime.datetime.now(), time).timestamp())
         # If it's a timedelta, add it to datetime.now(), then get the timestamp
         elif isinstance(time, datetime.timedelta):
-            timeObject = floor(
+            timeObject = math.floor(
                 (datetime.datetime.now() + time).timestamp())
 
         alarm = {

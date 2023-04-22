@@ -74,11 +74,12 @@ I don't know what file format it uses, but here's some notes:
   - But the files you download from Divoom aren't base64 encoded. 
 - Some files have a header, but some don't?
   - The font files have the string `UNICODE` inside them, but the images don't. In fact, a 32x32 solid red image is 21 bytes, while the font file is 2mb in size.
+- The images may possibly be encrypted. See [this Reddit thread](https://www.reddit.com/r/AskReverseEngineering/comments/12ryahe/) for thoughts and processes
 
 I've made extremely basic images for reverse engineering purposes, they can be found here: https://github.com/Grayda/pixoo64_example_images
 
 - 64x64 and 32x32 images start with hex `11`, followed by `02` for 32x32, and `04` for 64x64. 16x16 images start with `08`. 128x128 images start with `1A 01`
-  - I suspect that between hardware revisions, Divoom updated the file format. In the APK, there's a few references to `PixelDecode64New`, `PixelDecodeSixteen`, `PixelEncode64`, `PixelEncodeSixteen` and `PixelEncodePlanet`. `PixelEncodeSixteen` is marked as deprecated in the source code, and I wonder if `PixelDecode64New` handles 32x32 and 64x64 images. I don't know what `PixelEncodePlanet` does, however.
+  - I suspect that between hardware revisions, Divoom updated the file format. In the APK, there's a few references to `PixelDecode64New`, `PixelDecodeSixteen`, `PixelEncode64`, `PixelEncodeSixteen` and `PixelEncodePlanet`. `PixelEncodeSixteen` is marked as deprecated in the source code, and I wonder if `PixelDecode64New` handles 32x32 and 64x64 images. ~~I don't know what `PixelEncodePlanet` does, however.~~ `PixelEncodePlanet` is for the [Divoom Planet 9](https://divoom-gz.com/product/planet.html)
 
 ### Uploading files to the Divoom gallery
 
