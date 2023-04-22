@@ -1,6 +1,6 @@
 # Notes about the Divoom Pixoo 64
 
-This document contains various notes about the Divoom Pixoo. 
+This document contains various notes about the Divoom Pixoo. As I find out more about the Pixoo 64 I'll update this 
 
 ## Logging in to the Divoom API
 
@@ -62,6 +62,51 @@ To send animations to the device, do this:
 - Repeat for each frame
 
 There are much easier ways to play a GIF (e.g. sending a URL that points to a GIF, or loading a GIF from the SD card), but you can't draw text over the top because of limitations that I can't seem to work around yet
+
+## Divoom Image Files
+
+You can download various images from the Divoom website if you know the file ID. For example, to download a font file, go to this website: `https://appin.divoom-gz.com/Device/GetTimeDialFont` and find the font you want to download. Then grab the ID (e.g. `group1/M00/D6/80/eEwpPWC4tX6EaCuWAAAAAE69aF8710.bin`) and then go to `https://f.divoom-gz.com/<file id>`. The file will be downloaded
+
+I don't know what file format it uses, but here's some notes:
+
+- The data in the file is not the same as the data you send to the device. 
+  - The data you send to the device is a base64 encoded list of RGB values (e.g. `base64.encode([255, 255, 255, 0, 0, 0, 255, 255, 255 ...])` to send a checkerboard pattern)
+  - But the files you download from Divoom aren't base64 encoded. 
+- Some files have a header, but some don't?
+  - The font files have the string `UNICODE` inside them, but the images don't. In fact, a 32x32 solid red image is 21 bytes, while the font file is 2mb in size.
+
+I've made extremely basic images for reverse engineering purposes, they can be found here: https://github.com/Grayda/pixoo64_example_images
+
+- 64x64 and 32x32 images start with hex `11`, followed by `02` for 32x32, and `04` for 64x64. 16x16 images start with `08`. 128x128 images start with `1A 01`
+  - I suspect that between hardware revisions, Divoom updated the file format. In the APK, there's a few references to `PixelDecode64New`, `PixelDecodeSixteen`, `PixelEncode64`, `PixelEncodeSixteen` and `PixelEncodePlanet`. `PixelEncodeSixteen` is marked as deprecated in the source code, and I wonder if `PixelDecode64New` handles 32x32 and 64x64 images. I don't know what `PixelEncodePlanet` does, however.
+
+### Uploading files to the Divoom gallery
+
+I think this is done using this endpoint: `Cloud/GalleryUploadV3` and a quick test suggests it contains this data:
+
+```python
+ data = {
+   "Classify":1, # The category, perhaps?
+   "Content":"Image Description Here", # Description
+   "CopyrightFlag":1, # Sounds obvious, not sure what it's used for though
+   "DeviceId":300000000, # Your Pixoo's device ID 
+   "FileMD5":"<file MD5 hash>", # THe MD5 hash of the file you're uploading
+   "FileName":"Filename here", # The title of the file 
+   "FileSize":4, # The size of the image. 1 = 16x16, 2 = 32x32, 4 = 64x64, 8 = 25x25 (?!), 16 = 128x128
+   "FileType":2, # Possibly an indicator of whether it's a static image or an animation?
+   "HideFlag":0, # Hide from the gallery or something? Not sure
+   "IsAndroid":1, # Whether this was created on Android or not?
+   "OriginalGalleryId":0, # What gallery ID this belongs to?
+   "PacketFlag":0, # Not needed
+   "PhotoFlag":0, # If the thing you're uploaded was digitized from your camera (?)
+   "PrivateFlag":1, # If this should be a private upload (i.e. only visible to you)
+   "Token":1681104111, # Retrieved when you called pixoo.divoomLogin(email="email@example.com", password="yourpasswordhere")
+   "UserId":402694556, # Your user ID, retrieved from the same divoomLogin call as above
+   "Version":12 # ?
+}`
+```
+
+TODO: Expand on this
 
 ## Fonts
 
