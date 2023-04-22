@@ -2408,13 +2408,16 @@ def downloadOnlineGIF(fileId: str, outFile: str | None):
                 pixelData.append((pc[0], pc[1], pc[2]))
 
             # Make a new image and put the pixel data in there.
-            img = Image.new("RGB", (frameSize, frameSize)).putdata(pixelData)
+            img = Image.new("RGB", (frameSize, frameSize))
+            
+            img.putdata(pixelData)
 
             # Add this newly created image to our list of images
             images.append(img)
 
         # And now use the first frame to save all of the subsequent frames as a GIF
-        images[0].save(outFile, format="GIF", append_images=images,
+        firstImage = images[0]
+        firstImage.save(outFile, format="GIF", append_images=images,
                save_all=True, duration=data["Speed"], loop=0)
 
     except Exception as e:
