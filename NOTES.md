@@ -65,16 +65,17 @@ There are much easier ways to play a GIF (e.g. sending a URL that points to a GI
 
 ## Divoom Image Files
 
-You can download various images from the Divoom website if you know the file ID. For example, to download a font file, go to this website: `https://appin.divoom-gz.com/Device/GetTimeDialFont` and find the font you want to download. Then grab the ID (e.g. `group1/M00/D6/80/eEwpPWC4tX6EaCuWAAAAAE69aF8710.bin`) and then go to `https://f.divoom-gz.com/<file id>`. The file will be downloaded
+You can download various images from the Divoom website if you know the file ID. For example, to download a font file, go to this website: `https://appin.divoom-gz.com/Device/GetTimeDialFont` and find the font you want to download. Then grab the ID (e.g. `group1/M00/D6/80/eEwpPWC4tX6EaCuWAAAAAE69aF8710.bin`) and then go to `https://f.divoom-gz.com/<file id>`. The file will be downloaded.
 
-I don't know what file format it uses, but here's some notes:
+I don't know what file format Divoom uses, but here's some notes:
 
 - The data in the file is not the same as the data you send to the device. 
   - The data you send to the device is a base64 encoded list of RGB values (e.g. `base64.encode([255, 255, 255, 0, 0, 0, 255, 255, 255 ...])` to send a checkerboard pattern)
-  - But the files you download from Divoom aren't base64 encoded. 
-- Some files have a header, but some don't?
+  - But the files you download from Divoom aren't base64 encoded?
   - The font files have the string `UNICODE` inside them, but the images don't. In fact, a 32x32 solid red image is 21 bytes, while the font file is 2mb in size.
-- The images may possibly be encrypted. See [this Reddit thread](https://www.reddit.com/r/AskReverseEngineering/comments/12ryahe/) for thoughts and processes
+- The images may possibly be encrypted or encoded. See [this Reddit thread](https://www.reddit.com/r/AskReverseEngineering/comments/12ryahe/) for thoughts and processes
+- The Divoom APK lets you record audio to include with an image. The audio file is stored separately and is just a regular MP3 file.
+- The files are possibly big-endian? The third byte in 64x64 images
 
 I've made extremely basic images for reverse engineering purposes, they can be found here: https://github.com/Grayda/pixoo64_example_images
 
@@ -82,6 +83,7 @@ I've made extremely basic images for reverse engineering purposes, they can be f
 - Images without animations seem to be handled differently:
   - My basic 64x64 and 32x32 images start with hex `11`. `11` is followed by `02` for 32x32, and `04` for 64x64. 16x16 images start with `08`. 128x128 images start with `1A`, like the animations do.
     - I suspect that between hardware revisions, Divoom updated the file format. In the APK, there's a few references to `PixelDecode64New`, `PixelDecodeSixteen`, `PixelEncode64`, `PixelEncodeSixteen` and `PixelEncodePlanet`. `PixelEncodeSixteen` is marked as deprecated in the source code, and I wonder if `PixelDecode64New` handles 32x32 and 64x64 images. ~~I don't know what `PixelEncodePlanet` does, however.~~ `PixelEncodePlanet` is for the [Divoom Planet 9](https://divoom-gz.com/product/planet.html)
+- Durations set in Photoshop (or whatever GIF creation tool you're using) are discarded when they get uploaded to Divoom. Instead, a global duration (?) is stored in the file.
 
 ### Uploading files to the Divoom gallery
 
@@ -91,21 +93,21 @@ I think this is done using this endpoint: `Cloud/GalleryUploadV3` and a quick te
  data = {
    "Classify":1, # The category, perhaps?
    "Content":"Image Description Here", # Description
-   "CopyrightFlag":1, # Sounds obvious, not sure what it's used for though
+   "CopyrightFlag":1, # Used to prevent other users from remixing / downloading the file, I think?
    "DeviceId":300000000, # Your Pixoo's device ID 
    "FileMD5":"<file MD5 hash>", # THe MD5 hash of the file you're uploading
    "FileName":"Filename here", # The title of the file 
-   "FileSize":4, # The size of the image. 1 = 16x16, 2 = 32x32, 4 = 64x64, 8 = 25x25 (?!), 16 = 128x128
+   "FileSize":4, # The size of the image. 1 = 16x16, 2 = 32x32, 4 = 64x64, 8 = 25x25 (possibly for the Planet 9?), 16 = 128x128
    "FileType":2, # Possibly an indicator of whether it's a static image or an animation?
-   "HideFlag":0, # Hide from the gallery or something? Not sure
+   "HideFlag":0, # Hide this image from other users? Not sure what the difference between PrivateFlag and HideFlag is
    "IsAndroid":1, # Whether this was created on Android or not?
    "OriginalGalleryId":0, # What gallery ID this belongs to?
-   "PacketFlag":0, # Not needed
+   "PacketFlag":0, # Not needed, but could be used to tell Divoom "this packet is related to the packet I sent before with the same ID"
    "PhotoFlag":0, # If the thing you're uploaded was digitized from your camera (?)
    "PrivateFlag":1, # If this should be a private upload (i.e. only visible to you)
    "Token":1681104111, # Retrieved when you called pixoo.divoomLogin(email="email@example.com", password="yourpasswordhere")
    "UserId":402694556, # Your user ID, retrieved from the same divoomLogin call as above
-   "Version":12 # ?
+   "Version":12 # Dunno?
 }`
 ```
 
