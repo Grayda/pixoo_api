@@ -98,47 +98,6 @@ def setDevice(deviceDetails: dict | str | DivoomDevice = None):
 
     return device
 
-
-def _checkOnlineCommand(command: str):
-    """
-    Check requirements for online commands
-
-    Check if the command we're calling needs a user set, a device set, both, or none
-
-    Parameters
-    ----------
-
-    Returns
-    -------
-
-    bool
-        Returns True if you can call the online command
-    Exception
-        Throws an exception if the command requires something further.
-
-    """
-
-    # If the command is one of the "always accessible" ones 
-    # (AKA it doesn't need you to pass a device or user details):
-    if command in ["UserLogin", "Device/ReturnSameLANDevice", "Cloud/GetFileData"]:
-        return 0
-
-    # If the command requires a user, but not a list:
-    if command in ["Device/GetList"]:
-        # If we're not logged in 
-        if not _isLoggedIn():
-            # Throw an error
-            raise Exception("Command requires you to be logged in")
-
-        return 1
-
-    if not _isLoggedIn():
-        raise Exception("Command requies you to be logged in")
-    if not _checkForDevice():
-        raise Exception("Command requies a device to be set")
-    
-    return 2
-
 def _checkForDevice():
     """
     Check that a device has been discovered / set
@@ -178,7 +137,7 @@ def _isLoggedIn():
     return isinstance(user, DivoomUser)
 
 
-def sendOnlineCommand(command: str, parameters={}):
+def sendOnlineCommand(command: str, parameters={}, requireLogin=True, requireDevice=True):
     """
     Send a command to the Divoom Online API
 
@@ -205,19 +164,20 @@ def sendOnlineCommand(command: str, parameters={}):
 
     data = {}
 
-    match _checkOnlineCommand(command=command):
-        # 0 = Just call the API, no device or login necessary
-        case 0:
-            pass
-        # 1 = We need to pass a device to the API
-        case 1:
+    if requireLogin:
+        if not _isLoggedIn():
+            raise Exception("Command requies you to be logged in")
+        else:
             data.update({
+                "DeviceId": device["DeviceId"],
                 "Token": user["Token"],
                 "UserId": user["UserId"]
             })
-        case 2:
+    if requireDevice:
+        if not _checkForDevice():
+            raise Exception("Command requies a device to be set")
+        else:
             data.update({
-                "DeviceId": device["DeviceId"],
                 "Token": user["Token"],
                 "UserId": user["UserId"]
             })
@@ -467,7 +427,7 @@ def findDevices():
     """
 
     try:
-        response = sendOnlineCommand(command="Device/ReturnSameLANDevice")
+        response = sendOnlineCommand(command="Device/ReturnSameLANDevice", requireDevice=False, requireLogin=False)
     except Exception as e:
         raise e
 
@@ -885,7 +845,7 @@ def setEnhancedBrightnessMode(enabled: bool):
 
     try:
         sendOnlineCommand(command="Sys/SetConf",
-                          parameters={"HighLight": enabled})
+                          parameters={"HighLight": enabled}, requireDevice=True, requireLogin=True)
     except Exception as e:
         raise e
 
@@ -926,7 +886,7 @@ def setDateFormat(format: DateFormat):
 
     try:
         sendOnlineCommand(command="Sys/SetConf",
-                          parameters={"DateFormat": format})
+                          parameters={"DateFormat": format}, requireDevice=True, requireLogin=True)
     except Exception as e:
         raise e
 
@@ -1423,7 +1383,7 @@ def setScoreboard(redScore: int, blueScore: int):
 
     try:
         sendOnlineCommand(command="Tools/SetScoreBoard",
-                          parameters={"BlueScore": blueScore, "RedScore": redScore})
+                          parameters={"BlueScore": blueScore, "RedScore": redScore}, requireDevice=True, requireLogin=True)
     except Exception as e:
         raise e
 
@@ -1999,7 +1959,7 @@ def divoomLogin(email: str, password: str, alreadyHashed: bool = False):
         response = sendOnlineCommand(command="UserLogin", parameters={
             "Email": email,
             "Password": password
-        })
+        }, requireDevice=False, requireLogin=False)
 
         global user
 
@@ -2033,7 +1993,7 @@ def divoomLogout(userID: int, token: int):
     """
 
     try:
-        sendOnlineCommand(command="UserLogout")
+        sendOnlineCommand(command="UserLogout", requireDevice=False, requireLogin=True)
 
         user = None
 
@@ -2062,7 +2022,7 @@ def getAlarms():
     """
 
     try:
-        response = sendOnlineCommand(command="Alarm/Get")
+        response = sendOnlineCommand(command="Alarm/Get", requireDevice=True, requireLogin=True)
         alarms = []
         for alarm in response["AlarmList"]:
             alarms.append({
@@ -2141,7 +2101,7 @@ def setAlarm(time: datetime.time | datetime.timedelta | int | Timer, repeatDays=
         }
 
         response = sendOnlineCommand(
-            command="Alarm/Set", parameters=alarm)
+            command="Alarm/Set", parameters=alarm, requireDevice=True, requireLogin=True)
 
         return response["AlarmId"]
 
@@ -2171,11 +2131,11 @@ def deleteAlarm(id: int | str):
 
     try:
         if id == "all":
-            response = sendOnlineCommand(command="Alarm/DelAll")
+            response = sendOnlineCommand(command="Alarm/DelAll", requireDevice=True, requireLogin=True)
         else:
             response = sendOnlineCommand(command="Alarm/Del", parameters={
                 "AlarmId": id
-            })
+            }, requireDevice=True, requireLogin=True)
 
         return response
 
@@ -2252,7 +2212,7 @@ def getNightMode():
 
     try:
 
-        response = sendOnlineCommand(command="Channel/GetNightView")
+        response = sendOnlineCommand(command="Channel/GetNightView", requireDevice=True, requireLogin=True)
 
         startTime = response["StartTime"]
         endTime = response["EndTime"]
@@ -2333,7 +2293,7 @@ def setNightMode(state: bool | int, start: int | datetime.time | None, end: int 
             "EndTime": endTime,
             "OnOff": int(state),
             "Brightness": brightness
-        })
+        }, requireDevice=True, requireLogin=True)
 
         return getNightMode()
 
@@ -2342,10 +2302,10 @@ def setNightMode(state: bool | int, start: int | datetime.time | None, end: int 
 
 def downloadOnlineGIF(fileId: str, outFile: str | None):
     """
-    Create a GIF from a Divoom file
+    Create a GIF from a Divoom file URL
 
     Retrieves data about a Divoom file and creates a file out of it. This can
-    only be done on public images, and not private images
+    only be done on public images, and not private images.
 
     Parameters
     ----------
@@ -2367,7 +2327,7 @@ def downloadOnlineGIF(fileId: str, outFile: str | None):
 
     try:
         # Call the Pixoo API to get the file
-        data = sendOnlineCommand("Cloud/GetFileData", { "FileId": fileId })
+        data = sendOnlineCommand("Cloud/GetFileData", { "FileId": fileId }, requireDevice=False, requireLogin=False)
 
         # If there's no data, then the FileId is valid, but the image is private
         # or has had the flag set so nobody can edit / remix it.
