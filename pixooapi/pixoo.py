@@ -2300,6 +2300,51 @@ def setNightMode(state: bool | int, start: int | datetime.time | None, end: int 
     except Exception as e:
         raise e
 
+def getUserImages(userId: int, results = 2000):
+    """
+    Get a user's images
+
+    Gets a list of a user's images
+
+    Parameters
+    ----------
+
+    userId : int
+        The ID of the user. 
+    results : int, optional
+        The number of results to return. Defaults to 2000
+
+    Returns
+    -------
+
+    list[dict]
+        A list that contains dictionaries with image info. Each dict will contain:
+
+        FileId : str
+            The ID of the file. You can download it by going to f.divoom-gz.com/<FileId>,
+            or you can pass it to downloadOnlineGIF to make a GIF out of it. 
+        FileName : str
+            The name of the image
+        Date : int
+            The time the image was uploaded as a Unix timestamp
+    Exception
+        Returns an exception if the API or the request returned an error
+
+    """
+
+    try:
+        results = sendOnlineCommand("GetSomeoneListV2", {
+            "SomeOneUserId": userId,
+            "StartNum": 1,
+            "EndNum": 2000,
+        }, requireDevice=False, requireLogin=False)
+
+        return {key: results["FileList"][key] for key in ("FileName", "FileId")}
+
+    except Exception as e:
+        raise e
+    
+
 def downloadOnlineGIF(fileId: str, outFile: str | None):
     """
     Create a GIF from a Divoom file URL
