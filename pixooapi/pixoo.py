@@ -2486,22 +2486,35 @@ def _binFileToGIF(file: str, key: str, iv: str, outFile: str):
             # Read the whole file
             # Get the first byte. This'll be the type of file
             match f.read(1).hex():
+                # Static 16x16 image
+                case "08":
+                    fileData["PicCount"] = 1
+                    fileData["Speed"] = 1
+                    fileData["FileData"] = f.read()
+                # Animated 16x16 image
+                case "09":
+                    # Get the number of frames in the file
+                    fileData["PicCount"] = int(f.read(1).hex(), 16)
+                    # Speed is (byte 3, bitwise and'd with 255), bitwised or with (byte 2, shifted left by 8 bytes)
+                    speed = f.read(2)
+                    fileData["Speed"] = (speed[1] & 255) | (speed[0] << 8)
+                    print(fileData)
+                    fileData["FileData"] = f.read()
+                # ??
+                case "1E":
+                    # TODO: find a file that has this type. 
+                    # I think you can just loop over the whole file (except the first byte?), and just bitwise and each byte by 255?
+                    pass
+                case "0C":
+                    # TODO: find a file that has this type
+                    # This file has some kind of scroll mode. Byte 1 is what sort of scroll mode it is. I don't know scrolling means here.
+                    # When you call Cloud/GetFileData, it can return an xScreenCount and yScreenCount, so perhaps that has something
+                    # to do with it? Or, perhaps it's some kind of clock face file that has user defineable 
+                    pass
                 # Static 128x128?
                 case "1a":
                     raise Exception("Filetype not yet supported")
                     # Get the number of frames in the file
-                    fileData["PicCount"] = 1
-                    fileData["Speed"] = 1
-                    fileData["FileData"] = f.read()
-                # Animated 16x16
-                case "09":
-                    # Get the number of frames in the file
-                    fileData["PicCount"] = int(f.read(1).hex(), 16)
-                    f.read(1) # Skip a byte
-                    fileData["Speed"] = int(f.read(1).hex(), 16)
-                    fileData["FileData"] = f.read()
-                # Static 16x16
-                case "08":
                     fileData["PicCount"] = 1
                     fileData["Speed"] = 1
                     fileData["FileData"] = f.read()
@@ -2518,13 +2531,13 @@ def _binFileToGIF(file: str, key: str, iv: str, outFile: str):
                     fileData["Speed"] = 1
                     fileData["FileData"] = f.read()
                 # Other file types, as per the Pixoo APK
-                case "1E" | "0C" | "12" | "OD" | "13" | "07" | "0F" | "16" | "17": 
+                case "1E" | "0C" | "12" | "OD" | "13" | "07" | "0F" | "16" | "17" | "11" | "00" | "1A": 
                     # Note: 0F seems to match with a 16x16 file
                     # Some types also take a string in the decompiled APK. Allows for text to be parsed, like a clock?
                     raise Exception("Filetype not yet supported")
                 case _:
                     raise Exception("Unknown File Type")
-        
+            
             # Set up a decryption cipher with our key an IV in CBC mode
             decrypt_cipher = AES.new(key, AES.MODE_CBC, IV=iv)
 
