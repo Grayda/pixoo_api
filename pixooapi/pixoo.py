@@ -8,6 +8,7 @@ import hashlib
 from io import BytesIO
 import math 
 import json
+from Crypto.Cipher import AES
 
 # Import our enums and such so that you can easily use them in the same class
 from pixooapi.types import *
@@ -2345,7 +2346,7 @@ def getUserImages(userId: int, results = 2000):
         raise e
     
 
-def downloadOnlineGIF(fileId: str, outFile: str | None):
+def downloadOnlineGIF(fileId: str, outFile = None):
     """
     Create a GIF from a Divoom file URL
 
@@ -2385,6 +2386,19 @@ def downloadOnlineGIF(fileId: str, outFile: str | None):
             else:
                 outFile = "image.gif"
 
+        _imageDataToGIF(data, data["Filename"])
+
+    except Exception as e:
+        raise e
+
+def _imageDataToGIF(data: dict, outFile = "image.gif"):
+    """
+    Convert image data to a GIF
+
+
+    """
+
+    try:
         # What will the size of the chunks be?
         # This is the length of the data, divided by the number of frames
         chunkSize = int((len(data["FileData"]) / int(data["PicCount"])))
@@ -2427,4 +2441,100 @@ def downloadOnlineGIF(fileId: str, outFile: str | None):
 
     except Exception as e:
         raise e
+
+
+def _binFileToGIF(file: str, key: str, iv: str, outFile: str):
+    """
+    Decrypt and make a GIF out of a Divoom file
+
+    Retrieves data about a Divoom file and creates a file out of it. This can
+    only be done on public images, and not private images.
+
+    Parameters
+    ----------
+
+    file : str
+        The path to a file.
+    key : str
+        The decryption key. Can be extracted from the decompiled Divoom APK in sources/com/divoom/Divoom/utils/cloudData/C4707a.java
+    iv : str
+        The initialisation vector, also extracted from the decompiled Divoom APK
+    outFile : str
+        Where to save this image on disk. If not specified, will attempt to use the filename from Divoom, otherwise will default to image.gif
+
+    Returns
+    -------
+
+    str
+        Returns the full path to the created GIF
+    ValueError
+        Returns a ValueError if there was a decryption error
+    Exception
+        Returns an exception if the API or the request returned an error
     
+    """
+    
+    try:
+        with open(file=file, mode="rb") as f:
+
+            fileData = {
+                "PicCount": 0,
+                "Speed": 0,
+                "FileData": []
+            }
+
+            # Read the whole file
+            # Get the first byte. This'll be the type of file
+            match f.read(1).hex():
+                # Static 128x128?
+                case "1a":
+                    raise Exception("Filetype not yet supported")
+                    # Get the number of frames in the file
+                    fileData["PicCount"] = 1
+                    fileData["Speed"] = 1
+                    fileData["FileData"] = f.read()
+                # Animated 16x16
+                case "09":
+                    # Get the number of frames in the file
+                    fileData["PicCount"] = int(f.read(1).hex(), 16)
+                    f.read(1) # Skip a byte
+                    fileData["Speed"] = int(f.read(1).hex(), 16)
+                    fileData["FileData"] = f.read()
+                # Static 16x16
+                case "08":
+                    fileData["PicCount"] = 1
+                    fileData["Speed"] = 1
+                    fileData["FileData"] = f.read()
+                # Font file?
+                case "00":
+                    raise Exception("Filetype not yet supported")
+                    fileData["PicCount"] = int(f.read(1).hex(), 16)
+                    fileData["Speed"] = 1
+                    fileData["FileData"] = f.read()
+                # Static 64x64?
+                case "11":
+                    raise Exception("Filetype not yet supported")
+                    fileData["PicCount"] = 1
+                    fileData["Speed"] = 1
+                    fileData["FileData"] = f.read()
+                # Other file types, as per the Pixoo APK
+                case "1E" | "0C" | "12" | "OD" | "13" | "07" | "0F" | "16" | "17": 
+                    # Note: 0F seems to match with a 16x16 file
+                    # Some types also take a string in the decompiled APK. Allows for text to be parsed, like a clock?
+                    raise Exception("Filetype not yet supported")
+                case _:
+                    raise Exception("Unknown File Type")
+        
+            # Set up a decryption cipher with our key an IV in CBC mode
+            decrypt_cipher = AES.new(key, AES.MODE_CBC, IV=iv)
+
+            # Replace the filedata (the raw encrypted data) with our decoded data
+            fileData["FileData"] = decrypt_cipher.decrypt(fileData["FileData"])
+            
+            # And then save it as a GIF
+            _imageDataToGIF(fileData, outFile)
+                
+    except ValueError as e:
+        raise e
+    except Exception as e:
+        raise e
