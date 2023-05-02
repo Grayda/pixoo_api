@@ -67,15 +67,10 @@ There are much easier ways to play a GIF (e.g. sending a URL that points to a GI
 
 You can download various images from the Divoom website if you know the file ID. For example, to download a font file, go to this website: `https://appin.divoom-gz.com/Device/GetTimeDialFont` and find the font you want to download. Then grab the ID (e.g. `group1/M00/D6/80/eEwpPWC4tX6EaCuWAAAAAE69aF8710.bin`) and then go to `https://f.divoom-gz.com/<file id>`. The file will be downloaded.
 
-I don't know what file format Divoom uses, but here's some notes:
+The 16x16 files are partly AES encrypted. The first byte (or bytes, depending on whether the image is animated or not) are info about the file, while the remainder of the file is AES CBC encrypted data. You can obtain the key and IV by decompiling the APK and looking in `sources\com\divoom\Divoom\utils\cloudData\C4707a.java`
 
-- The data in the file is not the same as the data you send to the device. 
-  - The data you send to the device is a base64 encoded list of RGB values (e.g. `base64.encode([255, 255, 255, 0, 0, 0, 255, 255, 255 ...])` to send a checkerboard pattern)
-  - But the files you download from Divoom aren't base64 encoded?
-  - The font files have the string `UNICODE` inside them, but the images don't. In fact, a 32x32 solid red image is 21 bytes, while the font file is 2mb in size.
-- The images may possibly be encrypted or encoded. See [this Reddit thread](https://www.reddit.com/r/AskReverseEngineering/comments/12ryahe/) for thoughts and processes
+- The font files have the string `UNICODE` inside them, but the images don't. In fact, a 32x32 solid red image is 21 bytes, while the font file is 2mb in size.
 - The Divoom APK lets you record audio to include with an image. The audio file is stored separately and is just a regular MP3 file.
-- The files are possibly big-endian? The third byte in 64x64 images
 
 I've made extremely basic images for reverse engineering purposes, they can be found here: https://github.com/Grayda/pixoo64_example_images
 
