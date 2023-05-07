@@ -9,6 +9,8 @@ from io import BytesIO
 import math 
 import json
 from Crypto.Cipher import AES
+from struct import unpack # For reading multiple bytes, and unpacking them into variables
+import lzo
 
 # Import our enums and such so that you can easily use them in the same class
 from pixooapi.types import *
@@ -2478,28 +2480,53 @@ def _binFileToGIF(file: str, key: str, iv: str, outFile: str):
         with open(file=file, mode="rb") as f:
 
             fileData = {
+                "Width": 0,
+                "Height": 0,
                 "PicCount": 0,
                 "Speed": 0,
                 "FileData": []
             }
 
+            # Set up a decryption cipher with our key an IV in CBC mode
+            decrypt_cipher = AES.new(key, AES.MODE_CBC, IV=iv)
+
             # Read the whole file
             # Get the first byte. This'll be the type of file
             match f.read(1).hex():
-                # Static 16x16 image
+                # 16x16 static image.
+                # Data is AES CBC encrypted and starts at byte 2
                 case "08":
+                    fileData["Width"] = 16
+                    fileData["Height"] = 16
                     fileData["PicCount"] = 1
                     fileData["Speed"] = 1
-                    fileData["FileData"] = f.read()
-                # Animated 16x16 image
+                    fileData["FileData"] = decrypt_cipher.decrypt(f.read())
+                # 16x16 animated image. Number of frames is byte 2,
+                # Speed is bytes 3 and 4, and the AES encrypted data starts at byte 6
                 case "09":
+                    fileData["Width"] = 16
+                    fileData["Height"] = 16
                     # Get the number of frames in the file
                     fileData["PicCount"] = int(f.read(1).hex(), 16)
-                    # Speed is (byte 3, bitwise and'd with 255), bitwised or with (byte 2, shifted left by 8 bytes)
+                    # Speed is the next two bytes, and is calculated like this:
+                    # (byte 3, bitwise and'd with 255), bitwised or with (byte 2, shifted left by 8 bytes)
                     speed = f.read(2)
                     fileData["Speed"] = (speed[1] & 255) | (speed[0] << 8)
-                    print(fileData)
-                    fileData["FileData"] = f.read()
+                    # And the rest of the data is AES CBC data
+                    fileData["FileData"] = decrypt_cipher.decrypt(f.read())
+                # Static image, 32x32 or 64x64.
+                # Size is byte 2 * 16, multiplied by byte 3 * 16
+                # Data starts at byte 4 and is AES CBC encrypted.
+                # The resulting data is LZO compressed (with a length of width * height * 3)
+                case "11":
+                    # Static image
+                    # Read six bytes, and unpack them into integers.
+                    width, height, dataLength = unpack(">BBI", f.read(6))
+                    fileData["Width"] = width * 16
+                    fileData["Height"] = height * 16
+                    fileData["PicCount"] = 1
+                    data = fileData["FileData"] = decrypt_cipher.decrypt(f.read())
+                    fileData["FileData"] = lzo.decompress(data, False, (width * 16) * (height * 16) * 3)
                 # ??
                 case "1E":
                     # TODO: find a file that has this type. 
@@ -2524,12 +2551,6 @@ def _binFileToGIF(file: str, key: str, iv: str, outFile: str):
                     fileData["PicCount"] = int(f.read(1).hex(), 16)
                     fileData["Speed"] = 1
                     fileData["FileData"] = f.read()
-                # Static 64x64?
-                case "11":
-                    raise Exception("Filetype not yet supported")
-                    fileData["PicCount"] = 1
-                    fileData["Speed"] = 1
-                    fileData["FileData"] = f.read()
                 # Other file types, as per the Pixoo APK
                 case "1E" | "0C" | "12" | "OD" | "13" | "07" | "0F" | "16" | "17" | "11" | "00" | "1A": 
                     # Note: 0F seems to match with a 16x16 file
@@ -2537,12 +2558,6 @@ def _binFileToGIF(file: str, key: str, iv: str, outFile: str):
                     raise Exception("Filetype not yet supported")
                 case _:
                     raise Exception("Unknown File Type")
-            
-            # Set up a decryption cipher with our key an IV in CBC mode
-            decrypt_cipher = AES.new(key, AES.MODE_CBC, IV=iv)
-
-            # Replace the filedata (the raw encrypted data) with our decoded data
-            fileData["FileData"] = decrypt_cipher.decrypt(fileData["FileData"])
             
             # And then save it as a GIF
             _imageDataToGIF(fileData, outFile)
