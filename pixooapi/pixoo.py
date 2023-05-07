@@ -2490,11 +2490,11 @@ def _binFileToGIF(file: str, key: str, iv: str, outFile: str):
             # Set up a decryption cipher with our key an IV in CBC mode
             decrypt_cipher = AES.new(key, AES.MODE_CBC, IV=iv)
 
-            # Read the whole file
             # Get the first byte. This'll be the type of file
-            match f.read(1).hex():
+            match f.read(1).hex().upper():
                 # 16x16 static image.
-                # Data is AES CBC encrypted and starts at byte 2
+                # Byte 1 = Image type
+                # Byte 2 ... Byte N = Image data, AES encrypted
                 case "08":
                     fileData["Width"] = 16
                     fileData["Height"] = 16
@@ -2502,7 +2502,10 @@ def _binFileToGIF(file: str, key: str, iv: str, outFile: str):
                     fileData["Speed"] = 1
                     fileData["FileData"] = decrypt_cipher.decrypt(f.read())
                 # 16x16 animated image. Number of frames is byte 2,
-                # Speed is bytes 3 and 4, and the AES encrypted data starts at byte 6
+                # Byte 1 = Image type
+                # Byte 2 = Number of frames
+                # Byte 3-4 = Animation speed. See comment below for how to calculate speed
+                # Byte 5 ... Byte N = Image data, AES encrypted
                 case "09":
                     fileData["Width"] = 16
                     fileData["Height"] = 16
@@ -2515,22 +2518,42 @@ def _binFileToGIF(file: str, key: str, iv: str, outFile: str):
                     # And the rest of the data is AES CBC data
                     fileData["FileData"] = decrypt_cipher.decrypt(f.read())
                 # Static image, 32x32 or 64x64.
-                # Size is byte 2 * 16, multiplied by byte 3 * 16
-                # Data starts at byte 4 and is AES CBC encrypted.
-                # The resulting data is LZO compressed (with a length of width * height * 3)
+                # Byte 1 = Image type
+                # Byte 2-3 = Number of rows, number of columns. Size = rows * 16 x cols * 16
+                # Byte 4 = The length of the uncompressed LZO data. 
+                # Byte 5 ... Byte N = Image data, AES encrypted
                 case "11":
-                    # Static image
+                    # TODO: This breaks the checkerboard image. Fix it!
                     # Read six bytes, and unpack them into integers.
+                    # dataLength is the length of the LZO uncompressed data. This is different from the length of the unencrypted data!
                     width, height, dataLength = unpack(">BBI", f.read(6))
+                    # Size = number of rows * 16, number of columns * 16 
                     fileData["Width"] = width * 16
                     fileData["Height"] = height * 16
                     fileData["PicCount"] = 1
+                    # Read and then unencrypt the data. The result is LZO compressed
                     data = fileData["FileData"] = decrypt_cipher.decrypt(f.read())
-                    fileData["FileData"] = lzo.decompress(data, False, (width * 16) * (height * 16) * 3)
-                # ??
+                    # Next, we decompress our data. Byte 4 tells us how much data to read
+                    fileData["FileData"] = lzo.decompress(data[:dataLength], False, ((width * 16) * (height * 16)) * 3)
+                # Animated, 32x32, 64x64 or 128x128 image, static 128x128 images
+                # Byte 1 = Image type
+                # Byte 2 = Number of frames
+                # Byte 3-4 = Speed
+                # Byte 5-6 = Number of rows, number of columns. Size = rows * 16 x cols * 16
+                case "1A":
+                    fileData["PicCount"] = int(f.read(1).hex(), 16)
+                    speed = f.read(2)
+                    fileData["Speed"] = (speed[1] & 255) | (speed[0] << 8)
+                    width, height, unknown, dataLength = unpack(">BBIB", f.read(7))
+                    fileData["Width"] = width * 16
+                    fileData["Height"] = height * 16
+                    f.read(5)
+                    data = fileData["FileData"] = decrypt_cipher.decrypt(f.read())
+                    print(data)
+                    exit()
+                    fileData["FileData"] = f.read()
                 case "1E":
                     # TODO: find a file that has this type. 
-                    # I think you can just loop over the whole file (except the first byte?), and just bitwise and each byte by 255?
                     pass
                 case "0C":
                     # TODO: find a file that has this type
@@ -2538,13 +2561,6 @@ def _binFileToGIF(file: str, key: str, iv: str, outFile: str):
                     # When you call Cloud/GetFileData, it can return an xScreenCount and yScreenCount, so perhaps that has something
                     # to do with it? Or, perhaps it's some kind of clock face file that has user defineable 
                     pass
-                # Static 128x128?
-                case "1a":
-                    raise Exception("Filetype not yet supported")
-                    # Get the number of frames in the file
-                    fileData["PicCount"] = 1
-                    fileData["Speed"] = 1
-                    fileData["FileData"] = f.read()
                 # Font file?
                 case "00":
                     raise Exception("Filetype not yet supported")
