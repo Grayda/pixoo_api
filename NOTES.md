@@ -67,7 +67,7 @@ There are much easier ways to play a GIF (e.g. sending a URL that points to a GI
 
 You can download various images from the Divoom website if you know the file ID. For example, to download a font file, go to this website: `https://appin.divoom-gz.com/Device/GetTimeDialFont` and find the font you want to download. Then grab the ID (e.g. `group1/M00/D6/80/eEwpPWC4tX6EaCuWAAAAAE69aF8710.bin`) and then go to `https://f.divoom-gz.com/<file id>`. The file will be downloaded.
 
-The 16x16 files are partly AES encrypted. The first byte (or bytes, depending on whether the image is animated or not) are info about the file, while the remainder of the file is AES CBC encrypted data. You can obtain the key and IV by decompiling the APK and looking in `sources\com\divoom\Divoom\utils\cloudData\C4707a.java`
+The 16x16 files are partly AES encrypted. The first byte (or bytes, depending on whether the image is animated or not) are info about the file, while the remainder of the file is AES CBC encrypted data. You can obtain the key and IV by decompiling the APK and looking in `sources\com\divoom\Divoom\utils\cloudData\`. One of the files will contain a string, as well as a series of bytes. These are the key and IV respectively
 
 - The font files have the string `UNICODE` inside them, but the images don't. In fact, a 32x32 solid red image is 21 bytes, while the font file is 2mb in size.
 - The Divoom APK lets you record audio to include with an image. The audio file is stored separately and is just a regular MP3 file.
